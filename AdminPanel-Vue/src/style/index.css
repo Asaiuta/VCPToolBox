@@ -1,0 +1,679 @@
+@import "./layout.css";
+
+:root {
+  /* --- 优化暗色主题 (深邃/玻璃拟态) - 保持原有风格 --- */
+  --primary-bg-dark: #0a0a0a;
+  --secondary-bg-dark: rgba(28, 28, 30, 0.85);
+  --tertiary-bg-dark: rgba(44, 44, 46, 0.6);
+  --accent-bg-dark: rgba(56, 189, 248, 0.1);
+  --primary-text-dark: #f5f5f7;
+  --secondary-text-dark: #a1a1a6;
+  --highlight-text-dark: #38bdf8;
+  --border-color-dark: rgba(255, 255, 255, 0.08);
+  --button-bg-dark: #0ea5e9;
+  --button-hover-bg-dark: #0284c7;
+  --danger-color-dark: #d93025;
+  --danger-hover-bg-dark: #c52a1f;
+  --success-color-dark: #1e8e3e;
+  --warning-color-dark: #f9ab00;
+  --input-bg-dark: rgba(44, 44, 46, 0.8);
+  --scrollbar-track-dark: #0a0a0a;
+  --scrollbar-thumb-dark: #3a3a3c;
+  --scrollbar-thumb-hover-dark: #555557;
+  --cpu-color-dark: #38bdf8;
+  --memory-color-dark: #4ade80;
+  --glass-blur: blur(20px);
+
+  /* 默认主题（暗色） */
+  --primary-bg: var(--primary-bg-dark);
+  --secondary-bg: var(--secondary-bg-dark);
+  --tertiary-bg: var(--tertiary-bg-dark);
+  --accent-bg: var(--accent-bg-dark);
+  --primary-text: var(--primary-text-dark);
+  --secondary-text: var(--secondary-text-dark);
+  --highlight-text: var(--highlight-text-dark);
+  --border-color: var(--border-color-dark);
+  --button-bg: var(--button-bg-dark);
+  --button-hover-bg: var(--button-hover-bg-dark);
+  --danger-color: var(--danger-color-dark);
+  --input-bg: var(--input-bg-dark);
+  --scrollbar-track: var(--scrollbar-track-dark);
+  --scrollbar-thumb: var(--scrollbar-thumb-dark);
+  --scrollbar-thumb-hover: var(--scrollbar-thumb-hover-dark);
+  --cpu-color: var(--cpu-color-dark);
+  --memory-color: var(--memory-color-dark);
+
+  /* --- 统一动画时长变量 --- */
+  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* --- Dashboard 专用变量 --- */
+  --dashboard-radius: var(--radius-xl, 20px);
+  --dashboard-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.4));
+  --dashboard-shadow-hover: var(--shadow-lg, 0 8px 32px rgba(0, 0, 0, 0.5));
+
+  /* 行星颜色变量 */
+  --sun-color: #ffcc33;
+  --mercury-color: #999999;
+  --venus-color: #e3bb76;
+  --earth-color: #1a73e8;
+  --mars-color: #c53929;
+  --jupiter-color: #d39c7e;
+  --saturn-color: #c5ab6e;
+  --uranus-color: #b5e1e9;
+  --neptune-color: #27468e;
+  --star-color: #ffffff;
+  --orbit-color: rgba(255, 255, 255, 0.1);
+
+  /* 阴影系统 - 暗色主题 */
+  --shadow-sm-dark: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md-dark: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg-dark: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-xl-dark: 0 20px 40px rgba(0, 0, 0, 0.6);
+
+  /* --- 优化亮色主题 (纯净/柔和) --- */
+  --primary-bg-light: #f5f5f7;
+  --secondary-bg-light: rgba(255, 255, 255, 0.9);
+  --tertiary-bg-light: rgba(240, 240, 245, 0.7);
+  --accent-bg-light: rgba(14, 165, 233, 0.08);
+  --primary-text-light: #1d1d1f;
+  --secondary-text-light: #6e6e73;
+  --highlight-text-light: #0ea5e9;
+  --border-color-light: rgba(0, 0, 0, 0.06);
+  --button-bg-light: #0ea5e9;
+  --button-hover-bg-light: #0284c7;
+  --danger-color-light: #d93025;
+  --danger-hover-bg-light: #c52a1f;
+  --success-color-light: #1e8e3e;
+  --warning-color-light: #f9ab00;
+  --input-bg-light: rgba(240, 240, 245, 0.9);
+  --scrollbar-track-light: #f5f5f7;
+  --scrollbar-thumb-light: #d2d2d7;
+  --scrollbar-thumb-hover-light: #a1a1a6;
+  --cpu-color-light: #0ea5e9;
+  --memory-color-light: #16a34a;
+
+  /* 阴影系统 - 亮色主题 */
+  --shadow-sm-light: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md-light: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg-light: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-xl-light: 0 20px 40px rgba(0, 0, 0, 0.15);
+
+  /* --- Z-Index System --- */
+  --z-index-sidebar-overlay: 998;
+  --z-index-sidebar: 999;
+  --z-index-top-bar: 1000;
+  --z-index-dropdown: 100;
+  --z-index-modal: 10000;
+  --z-index-loading: 10001;
+  --z-index-exit-immersive: 10002;
+  --z-index-message: 10003;
+
+  /* --- 圆角系统 --- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+}
+
+html[data-theme="dark"] {
+  --primary-bg: var(--primary-bg-dark);
+  --secondary-bg: var(--secondary-bg-dark);
+  --tertiary-bg: var(--tertiary-bg-dark);
+  --accent-bg: var(--accent-bg-dark);
+  --primary-text: var(--primary-text-dark);
+  --secondary-text: var(--secondary-text-dark);
+  --highlight-text: var(--highlight-text-dark);
+  --border-color: var(--border-color-dark);
+  --button-bg: var(--button-bg-dark);
+  --button-hover-bg: var(--button-hover-bg-dark);
+  --danger-color: var(--danger-color-dark);
+  --danger-hover-bg: var(--danger-hover-bg-dark);
+  --input-bg: var(--input-bg-dark);
+  --scrollbar-track: var(--scrollbar-track-dark);
+  --scrollbar-thumb: var(--scrollbar-thumb-dark);
+  --scrollbar-thumb-hover: var(--scrollbar-thumb-hover-dark);
+  --cpu-color: var(--cpu-color-dark);
+  --memory-color: var(--memory-color-dark);
+  color-scheme: dark;
+
+  /* --- Legacy Variable Support (style.css fallback) --- */
+  --bg: var(--primary-bg);
+  --text: var(--primary-text);
+  --text-h: var(--primary-text);
+  --border: var(--border-color);
+  --accent: var(--button-bg);
+  --accent-bg: rgba(192, 132, 252, 0.15);
+
+  /* Variables for EasyMDE editor compatibility */
+  --primary-color: var(--highlight-text-dark);
+  --primary-color-translucent: rgba(138, 180, 248, 0.3);
+  --background-color: var(--secondary-bg-dark);
+  --background-color-light: var(--tertiary-bg-dark);
+  --text-color-primary: var(--primary-text-dark);
+  --text-color-secondary: var(--secondary-text-dark);
+  --star-color: #ffffff;
+  --sun-color: #ffcc33;
+  --orbit-color: rgba(255, 255, 255, 0.1);
+  --mercury-color: #999999;
+  --venus-color: #e3bb76;
+  --earth-color: #2271b3;
+  --mars-color: #e27b58;
+  --jupiter-color: #d39c7e;
+  --saturn-color: #c5ab6e;
+  --uranus-color: #b5e1e9;
+  --neptune-color: #27468e;
+}
+
+html[data-theme="light"] {
+  --primary-bg: var(--primary-bg-light);
+  --secondary-bg: var(--secondary-bg-light);
+  --tertiary-bg: var(--tertiary-bg-light);
+  --accent-bg: var(--accent-bg-light);
+  --primary-text: var(--primary-text-light);
+  --secondary-text: var(--secondary-text-light);
+  --highlight-text: var(--highlight-text-light);
+  --border-color: var(--border-color-light);
+  --button-bg: var(--button-bg-light);
+  --button-hover-bg: var(--button-hover-bg-light);
+  --danger-color: var(--danger-color-light);
+  --danger-hover-bg: var(--danger-hover-bg-light);
+  --input-bg: var(--input-bg-light);
+  --scrollbar-track: var(--scrollbar-track-light);
+  --scrollbar-thumb: var(--scrollbar-thumb-light);
+  --scrollbar-thumb-hover: var(--scrollbar-thumb-hover-light);
+  --cpu-color: var(--cpu-color-light);
+  --memory-color: var(--memory-color-light);
+  color-scheme: light;
+
+  /* --- Legacy Variable Support (style.css fallback) --- */
+  --bg: var(--primary-bg);
+  --text: var(--primary-text);
+  --text-h: var(--primary-text);
+  --border: var(--border-color);
+  --accent: var(--button-bg);
+  --accent-bg: rgba(14, 165, 233, 0.1);
+
+  /* Variables for EasyMDE editor compatibility */
+  --primary-color: var(--highlight-text-light);
+  --primary-color-translucent: rgba(26, 115, 232, 0.3);
+  --background-color: var(--secondary-bg-light);
+  --background-color-light: var(--tertiary-bg-light);
+  --text-color-primary: var(--primary-text-light);
+  --text-color-secondary: var(--secondary-text-light);
+  --star-color: #1a73e8;
+  --sun-color: #f9ab00;
+  --orbit-color: rgba(0, 0, 0, 0.05);
+  --mercury-color: #70757a;
+  --venus-color: #b08d57;
+  --earth-color: #1a73e8;
+  --mars-color: #c53929;
+  --jupiter-color: #a56e4d;
+  --saturn-color: #967d44;
+  --uranus-color: #4d90fe;
+  --neptune-color: #3c4043;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  overflow-x: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei UI", "Segoe UI",
+    system-ui, sans-serif;
+  background-color: var(--primary-bg);
+  background-image: radial-gradient(
+      at 0% 0%,
+      rgba(56, 189, 248, 0.05) 0px,
+      transparent 50%
+    ),
+    radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.05) 0px, transparent 50%);
+  color: var(--primary-text);
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+}
+
+button,
+a,
+input,
+textarea,
+select,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--highlight-text);
+  outline-offset: 2px;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 5px;
+  border: 2px solid var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Loading Overlay */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: var(--z-index-loading);
+  flex-direction: column;
+}
+
+.loading-overlay.visible {
+  display: flex;
+}
+
+.loading-overlay .spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.loading-overlay p {
+  color: white;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Message Popup */
+.message-popup {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100px);
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: var(--z-index-message);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.message-popup.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.message-popup.info {
+  background: var(--button-bg);
+  color: white;
+}
+
+.message-popup.success {
+  background: #1e8e3e;
+  color: white;
+}
+
+.message-popup.error {
+  background: var(--danger-color);
+  color: white;
+}
+
+/* Utility Classes */
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: 400;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  vertical-align: middle;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "liga";
+}
+
+.btn-primary {
+  background: var(--button-bg);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-primary:hover {
+  background: var(--button-hover-bg);
+}
+
+.btn-primary:focus-visible {
+  outline: 2px solid var(--button-bg);
+  outline-offset: 2px;
+}
+
+.btn-secondary {
+  background: var(--tertiary-bg);
+  color: var(--primary-text);
+  border: 1px solid var(--border-color);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.btn-secondary:hover {
+  background: var(--accent-bg);
+}
+
+.btn-secondary:focus-visible {
+  outline: 2px solid var(--highlight-text);
+  outline-offset: 2px;
+}
+
+.btn-danger {
+  background: var(--danger-color);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.btn-danger:hover {
+  background: var(--danger-hover-bg);
+}
+
+.btn-danger:focus-visible {
+  outline: 2px solid var(--danger-color);
+  outline-offset: 2px;
+}
+
+.btn-success {
+  background: #1e8e3e;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-success:hover {
+  background: #167a34;
+}
+
+.card {
+  background: var(--secondary-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: var(--primary-text);
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group input[type="password"],
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--primary-text);
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.form-group input:focus-visible,
+.form-group textarea:focus-visible,
+.form-group select:focus-visible {
+  outline: 2px solid var(--highlight-text);
+  outline-offset: 2px;
+  border-color: var(--highlight-text);
+}
+
+.form-group input:focus:not(:focus-visible),
+.form-group textarea:focus:not(:focus-visible),
+.form-group select:focus:not(:focus-visible) {
+  border-color: var(--highlight-text);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+}
+
+@media (max-width: 480px) {
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .btn-success {
+    width: 100%;
+    justify-content: center;
+    min-height: 40px;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .card {
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .form-group {
+    margin-bottom: 14px;
+  }
+
+  .form-group label,
+  .description {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .form-group input[type="text"],
+  .form-group input[type="number"],
+  .form-group input[type="password"],
+  .form-group textarea,
+  .form-group select {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .form-group textarea {
+    min-height: 88px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-top: 16px;
+    padding-top: 16px;
+  }
+
+  .status-message {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.45;
+    text-align: center;
+  }
+
+  .switch-container {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .key-name {
+    display: inline-block;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+}
+
+.status-message {
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+
+.status-message.info {
+  color: var(--highlight-text);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.status-message.success {
+  color: #1e8e3e;
+  background: rgba(30, 142, 62, 0.1);
+}
+
+.status-message.error {
+  color: var(--danger-color);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.switch-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--tertiary-bg);
+  transition: 0.3s;
+  border-radius: 26px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: var(--secondary-text);
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: var(--button-bg);
+}
+
+input:checked + .slider:before {
+  transform: translateX(22px);
+  background-color: white;
+}
+
+.description {
+  display: block;
+  font-size: 13px;
+  color: var(--secondary-text);
+  margin-bottom: 8px;
+}
+
+.key-name {
+  font-family: "Consolas", "Monaco", monospace;
+  background: var(--tertiary-bg);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+}

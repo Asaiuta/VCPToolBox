@@ -1,4 +1,4 @@
-// server.js
+﻿// server.js
 const express = require('express');
 const dotenv = require('dotenv');
 dotenv.config({ path: 'config.env' });
@@ -126,7 +126,15 @@ const loginAttempts = new Map();
 const tempBlocks = new Map();
 const MAX_LOGIN_ATTEMPTS = 5; // 15分钟内最多尝试5次
 const LOGIN_ATTEMPT_WINDOW = 15 * 60 * 1000; // 15分钟的窗口
-const TEMP_BLOCK_DURATION = 30 * 60 * 1000; // 封禁30分钟
+const TEMP_BLOCK_DURATION = 30 * 60 * 1000; // 封禁 30 分钟
+
+// 本地 IP 白名单 - 跳过频率限制（开发环境使用）
+const LOCAL_IP_WHITELIST = new Set([
+    '127.0.0.1',
+    '::1',
+    '::ffff:127.0.0.1',
+    'localhost'
+]); // 封禁30分钟
 
 const ChatCompletionHandler = require('./modules/chatCompletionHandler.js');
 
@@ -385,28 +393,22 @@ const adminAuth = (req, res, next) => {
         // ========== 新增：允许登录页面和相关资源无需认证 ==========
         const publicPaths = [
             '/AdminPanel/login.html',
+            '/AdminPanel/login',
             '/AdminPanel/VCPLogo2.png',
             '/AdminPanel/favicon.ico',
             '/AdminPanel/style.css',
             '/AdminPanel/woff.css',
-            '/AdminPanel/font.woff2'
+            '/AdminPanel/font.woff2',
+            '/AdminPanel/assets/',
+            '/AdminPanel/index.html'
         ];
 
         // 验证登录的端点也需要特殊处理（允许无凭据时返回401而不是重定向）
         const isVerifyEndpoint = req.path === '/admin_api/verify-login';
 
-        // ========== 新增：只读仪表板接口白名单（不计入登录失败次数）==========
-        const readOnlyDashboardPaths = [
-            '/admin_api/system-monitor',
-            '/admin_api/newapi-monitor',
-            '/admin_api/server-log',
-            '/admin_api/user-auth-code',
-            '/admin_api/weather'
-        ];
-        const isReadOnlyPath = readOnlyDashboardPaths.some(path => req.path.startsWith(path));
-        // ========== 新增结束 ==========
-
-        if (publicPaths.includes(req.path)) {
+        // 检查路径是否匹配公共资源（支持前缀匹配）
+        const isPublicPath = publicPaths.some(p => req.path === p || req.path.startsWith(p));
+        if (isPublicPath) {
             return next(); // 直接放行登录页面相关资源
         }
         // ========== 新增结束 ==========
@@ -431,9 +433,9 @@ const adminAuth = (req, res, next) => {
             return; // 停止进一步处理
         }
 
-        // 2. 检查IP是否被临时封禁（仅对非只读接口生效）
+        // 2. 检查IP是否被临时封禁
         const blockInfo = tempBlocks.get(clientIp);
-        if (blockInfo && Date.now() < blockInfo.expires && !isReadOnlyPath) {
+        if (blockInfo && Date.now() < blockInfo.expires) {
             console.warn(`[AdminAuth] Blocked login attempt from IP: ${clientIp}. Block expires at ${new Date(blockInfo.expires).toLocaleString()}.`);
             const timeLeft = Math.ceil((blockInfo.expires - Date.now()) / 1000 / 60);
             res.setHeader('Retry-After', Math.ceil((blockInfo.expires - Date.now()) / 1000)); // In seconds
@@ -474,8 +476,9 @@ const adminAuth = (req, res, next) => {
 
         // 4. 验证凭据
         if (!credentials || credentials.name !== ADMIN_USERNAME || credentials.pass !== ADMIN_PASSWORD) {
-            // 认证失败，处理登录尝试计数（仅对非只读接口计数）
-            if (clientIp && !isReadOnlyPath) {
+            // 认证失败，处理登录尝试计数
+            // 本地 IP 白名单跳过频率限制
+            if (clientIp && !LOCAL_IP_WHITELIST.has(clientIp)) {
                 const now = Date.now();
                 let attemptInfo = loginAttempts.get(clientIp) || { count: 0, firstAttempt: now };
 
@@ -529,8 +532,71 @@ const adminAuth = (req, res, next) => {
 // This MUST come before serving static files to protect the panel itself.
 app.use(adminAuth);
 
+app.get(/^\/AdminPanel\/plugin-assets\/([^/]+)\/(.+)$/, (req, res) => {
+    const pluginName = typeof req.params[0] === 'string' ? req.params[0] : '';
+    const requestedAssetPath = typeof req.params[1] === 'string' ? req.params[1] : '';
+
+    if (
+        !pluginName ||
+        !requestedAssetPath ||
+        pluginName === '.' ||
+        pluginName === '..' ||
+        !/^[A-Za-z0-9._-]+$/.test(pluginName)
+    ) {
+        return res.status(400).json({ error: 'Invalid plugin asset request.' });
+    }
+
+    const pluginsRoot = path.resolve(__dirname, 'Plugin');
+    const pluginRoot = path.resolve(pluginsRoot, pluginName);
+    const pluginRootPrefix = `${pluginRoot}${path.sep}`;
+
+    if (pluginRoot !== pluginsRoot && !pluginRoot.startsWith(`${pluginsRoot}${path.sep}`)) {
+        return res.status(403).json({ error: 'Forbidden plugin path.' });
+    }
+
+    const pluginAssetRoot = path.resolve(pluginRoot, 'AdminPanel');
+    const assetPath = path.resolve(pluginAssetRoot, requestedAssetPath);
+    const normalizedRootPrefix = `${pluginAssetRoot}${path.sep}`;
+
+    if (assetPath !== pluginAssetRoot && !assetPath.startsWith(normalizedRootPrefix)) {
+        return res.status(403).json({ error: 'Forbidden plugin asset path.' });
+    }
+
+    res.sendFile(assetPath, (error) => {
+        if (!error) {
+            return;
+        }
+
+        if (error.code === 'ENOENT') {
+            res.status(404).json({ error: 'Plugin asset not found.' });
+            return;
+        }
+
+        console.error('[AdminPanel] Failed to serve plugin asset:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Failed to serve plugin asset.' });
+        }
+    });
+});
+
 // Serve Admin Panel static files only after successful authentication.
-app.use('/AdminPanel', express.static(path.join(__dirname, 'AdminPanel')));
+// Serve Admin Panel static files (Vue version with Vue Router)
+app.use('/AdminPanel', express.static(path.join(__dirname, 'AdminPanel-Vue', 'dist')));
+
+// 处理 /AdminPanel 根路径请求，重定向到 index.html
+app.get('/AdminPanel', (req, res) => {
+  res.redirect('/AdminPanel/')
+})
+
+// Vue Router History 模式 fallback - 将所有未知 AdminPanel 路由重定向到 index.html
+// 注意：这个路由必须在 static 之后，以便先尝试查找实际文件
+app.get(/^\/AdminPanel\/.+/, (req, res) => {
+  // 如果请求的是静态资源（js, css, 图片等），返回 404
+  if (/\.(js|css|png|jpg|ico|svg|woff2?)$/i.test(req.path)) {
+    return res.status(404).send('Not found')
+  }
+  res.sendFile(path.join(__dirname, 'AdminPanel-Vue', 'dist', 'index.html'))
+})
 
 
 // Image server logic is now handled by the ImageServer plugin.
@@ -1134,6 +1200,13 @@ app.post('/plugin-callback/:pluginName/:taskId', async (req, res) => {
         // Still attempt to acknowledge the callback if possible, but log error
         return res.status(404).json({ status: "error", message: "Plugin not found, but callback noted." });
     }
+
+    // 🚀 核心导出点：通过 pluginManager 广播回调数据
+    pluginManager.emit('plugin_async_callback', {
+        pluginName,
+        taskId,
+        data: callbackData
+    });
 
     // 2. WebSocket push (existing logic)
     if (pluginManifest.webSocketPush && pluginManifest.webSocketPush.enabled) {
