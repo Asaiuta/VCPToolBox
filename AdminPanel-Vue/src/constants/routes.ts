@@ -15,6 +15,7 @@ export const ROUTES = {
   
   // 配置页面
   BASE_CONFIG: '/base-config',
+  PLUGINS: '/plugins',
   PLUGIN_CONFIG: '/plugin/:pluginName/config',
   
   // 日记和论坛
@@ -67,6 +68,7 @@ export function getFullPath(path: string): string {
 export const ROUTE_LABELS: Record<string, string> = {
   [ROUTES.DASHBOARD]: '仪表盘',
   [ROUTES.BASE_CONFIG]: '全局基础配置',
+  [ROUTES.PLUGINS]: '插件中心',
   [ROUTES.DAILY_NOTES]: '日记知识库管理',
   [ROUTES.VCP_FORUM]: 'VCP 论坛',
   [ROUTES.IMAGE_CACHE]: '多媒体 Base64 编辑器',

@@ -1,9 +1,15 @@
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { pluginApi } from "@/api";
+import {
+  recordNavigationVisit,
+  useNavigationUsage,
+  useRecentVisits,
+} from "@/composables/useRecentVisits";
 import { useAppStore } from "@/stores/app";
 import { showMessage } from "@/utils";
 import { createLogger } from "@/utils/logger";
+import { resolveRouteTitle } from "@/utils/navigation";
 
 const logger = createLogger("MainLayout");
 
@@ -18,6 +24,7 @@ export function useMainLayoutState() {
   const isSidebarCollapsed = ref(false);
   const isHoveringSidebar = ref(false);
   const isHoverEnabled = ref(false);
+  const isCommandPaletteOpen = ref(false);
 
   // 下拉菜单状态
   const isSystemMenuOpen = ref(false);
@@ -27,38 +34,44 @@ export function useMainLayoutState() {
   // 返回顶部
   const showBackToTop = ref(false);
   const contentRef = ref<HTMLElement | null>(null);
+  const recentVisits = useRecentVisits();
+  const navigationUsage = useNavigationUsage();
   let originalBodyOverflow = "";
 
-  const currentPageTitle = computed(() => {
-    const pathTarget =
-      route.path.replace(/^\//, "").split("/")[0] || "dashboard";
-    const navMatch = appStore.navItems.find(
-      (item) => item.target === pathTarget && item.label
-    );
-
-    if (navMatch?.label) {
-      return navMatch.label;
-    }
-
-    if (route.name === "PluginConfig") {
-      const pluginName = String(route.params.pluginName || "");
-      const pluginNav = appStore.navItems.find(
-        (item) => item.pluginName === pluginName && item.label
-      );
-      return pluginNav?.label || `${pluginName} 插件配置`;
-    }
-
-    return "控制台";
-  });
+  const currentPageTitle = computed(() =>
+    resolveRouteTitle(route, appStore.navItems, appStore.plugins)
+  );
 
   function navigateTo(target: string, pluginName?: string) {
+    const nextNavigationState = recordNavigationVisit({
+      target,
+      navItems: appStore.navItems,
+      plugins: appStore.plugins,
+      recentVisits: recentVisits.value,
+      navigationUsage: navigationUsage.value,
+      pluginName,
+    });
+    recentVisits.value = nextNavigationState.recentVisits;
+    navigationUsage.value = nextNavigationState.navigationUsage;
+
     if (pluginName) {
       router.push({ name: "PluginConfig", params: { pluginName } });
     } else {
       router.push({ path: `/${target}` });
     }
+    closeCommandPalette();
     closeMobileMenu();
     closeAllMenus();
+  }
+
+  function openCommandPalette() {
+    isCommandPaletteOpen.value = true;
+    closeMobileMenu();
+    closeAllMenus();
+  }
+
+  function closeCommandPalette() {
+    isCommandPaletteOpen.value = false;
   }
 
   function toggleMobileMenu() {
@@ -145,15 +158,15 @@ export function useMainLayoutState() {
   function handleKeydown(event: KeyboardEvent) {
     if ((event.ctrlKey || event.metaKey) && event.key === "k") {
       event.preventDefault();
-      const searchInput = document.getElementById(
-        "sidebar-search"
-      ) as HTMLInputElement;
-      if (searchInput) {
-        searchInput.focus();
-      }
+      openCommandPalette();
+      return;
     }
 
     if (event.key === "Escape") {
+      if (isCommandPaletteOpen.value) {
+        closeCommandPalette();
+        return;
+      }
       if (isImmersiveMode.value) {
         exitImmersiveMode();
       }
@@ -176,6 +189,7 @@ export function useMainLayoutState() {
   watch(
     () => route.fullPath,
     () => {
+      closeCommandPalette();
       closeMobileMenu();
       closeAllMenus();
       if (contentRef.value) {
@@ -235,13 +249,18 @@ export function useMainLayoutState() {
     isSidebarCollapsed,
     isHoveringSidebar,
     isHoverEnabled,
+    isCommandPaletteOpen,
     isSystemMenuOpen,
     isUserMenuOpen,
     hasNotifications,
     showBackToTop,
     contentRef,
+    recentVisits,
+    navigationUsage,
     currentPageTitle,
     navigateTo,
+    openCommandPalette,
+    closeCommandPalette,
     toggleMobileMenu,
     closeMobileMenu,
     toggleSidebarCollapse,

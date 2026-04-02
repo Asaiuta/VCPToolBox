@@ -35,6 +35,12 @@ const routes: RouteRecordRaw[] = [
         component: () =>
           import(/* webpackChunkName: "config" */ "@/views/BaseConfig.vue"),
       },
+      {
+        path: "plugins",
+        name: "PluginsHub",
+        component: () =>
+          import(/* webpackChunkName: "plugin" */ "@/views/PluginsHub.vue"),
+      },
 
       // 日记和论坛（大文件，独立 chunk）
       {

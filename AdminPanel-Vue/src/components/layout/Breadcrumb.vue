@@ -22,31 +22,20 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useAppStore } from "@/stores/app";
-import { ROUTE_LABELS } from "@/constants/routes";
+import { resolveRouteTitle } from "@/utils/navigation";
 
 const router = useRouter();
+const route = useRoute();
 const appStore = useAppStore();
 
 const navItems = computed(() => appStore.navItems);
+const plugins = computed(() => appStore.plugins);
 
-const currentPageTitle = computed(() => {
-  // 优先从路由标签映射获取
-  const currentRouteName = router.currentRoute.value.name as string;
-  if (currentRouteName && ROUTE_LABELS[currentRouteName]) {
-    return ROUTE_LABELS[currentRouteName];
-  }
-
-  // 降级到导航项匹配
-  const item = navItems.value.find((item) => {
-    if (item.target === "dashboard") {
-      return currentRouteName === "Dashboard";
-    }
-    return currentRouteName === item.target;
-  });
-  return item?.label || "";
-});
+const currentPageTitle = computed(() =>
+  resolveRouteTitle(route, navItems.value, plugins.value)
+);
 
 function goToDashboard() {
   router.push({ name: "Dashboard" });

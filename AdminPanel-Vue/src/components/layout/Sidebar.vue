@@ -15,7 +15,7 @@
       :is-hovering-sidebar="isHoveringSidebar"
       :search-query="searchQuery"
       @update:search-query="searchQuery = $event"
-      @filterSidebar="filterSidebar"
+      @open-command-palette="emit('openCommandPalette')"
     />
 
     <SidebarRecentVisits
@@ -35,14 +35,17 @@
       :is-active-route="isActiveRoute"
       @navigateTo="navigateTo"
     />
+
   </aside>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
-import { useAppStore } from "@/stores/app";
+import { useAppStore, type NavItem } from "@/stores/app";
 import { useLocalStorage } from "@/composables/useLocalStorage";
+import type { RecentVisit } from "@/composables/useRecentVisits";
+import type { PluginInfo } from "@/types/api.plugin";
 import SidebarSearch from "./sidebar/SidebarSearch.vue";
 import SidebarRecentVisits from "./sidebar/SidebarRecentVisits.vue";
 import SidebarNavList from "./sidebar/SidebarNavList.vue";
@@ -52,98 +55,168 @@ interface Props {
   isSidebarCollapsed: boolean;
   isHoveringSidebar: boolean;
   isHoverEnabled: boolean;
+  recentVisits: readonly RecentVisit[];
 }
 
 const props = defineProps<Props>();
 
-interface Emits {
+const emit = defineEmits<{
   (e: "navigateTo", target: string, pluginName?: string): void;
   (e: "update:isHoveringSidebar", value: boolean): void;
-}
-
-const emit = defineEmits<Emits>();
+  (e: "openCommandPalette"): void;
+}>();
 
 const route = useRoute();
 const appStore = useAppStore();
 
 const navItems = computed(() => appStore.navItems);
+const plugins = computed(() => appStore.plugins);
 const isExpandedState = computed(
   () => !props.isSidebarCollapsed || props.isHoveringSidebar
 );
 const searchQuery = ref("");
-const filteredNavItems = ref(navItems.value);
-
-// 使用 useLocalStorage 统一管理
-const RECENT_VISITS_STORAGE_KEY = "sidebarRecentVisits";
-type RecentVisit = {
-  target: string;
-  label: string;
-  icon?: string;
-  pluginName?: string;
-};
-const recentVisits = useLocalStorage<RecentVisit[]>(
-  RECENT_VISITS_STORAGE_KEY,
-  []
-);
 const isRecentVisitsCollapsed = useLocalStorage<boolean>(
   "sidebarRecentCollapsed",
   false
 );
 
-// 监听导航项变化，重新过滤
-watch(
-  navItems,
-  () => {
-    filterSidebar();
-  },
-  { immediate: true }
-);
-
-function filterSidebar() {
+const filteredNavItems = computed(() => {
   const searchTerm = searchQuery.value.toLowerCase().trim();
-  const items = navItems.value.filter((item) => {
-    if (item.category) return true;
-    return item.label?.toLowerCase().includes(searchTerm);
-  });
-  filteredNavItems.value = items;
+  if (!searchTerm) {
+    return appendPinnedPluginItems(navItems.value);
+  }
+
+  const matchedCoreNav = filterCategorizedNavItems(navItems.value, searchTerm);
+  const matchedPlugins = buildPluginSearchItems(searchTerm);
+
+  if (matchedPlugins.length === 0) {
+    return matchedCoreNav;
+  }
+
+  return [...matchedCoreNav, ...matchedPlugins];
+});
+
+function filterCategorizedNavItems(
+  items: readonly NavItem[],
+  searchTerm: string
+): NavItem[] {
+  const result: NavItem[] = [];
+  let pendingCategory: NavItem | null = null;
+
+  for (const item of items) {
+    if (item.category) {
+      pendingCategory = item;
+      continue;
+    }
+
+    if (!item.label?.toLowerCase().includes(searchTerm)) {
+      continue;
+    }
+
+    if (pendingCategory) {
+      result.push(pendingCategory);
+      pendingCategory = null;
+    }
+
+    result.push(item);
+  }
+
+  return result;
+}
+
+function matchesPlugin(plugin: PluginInfo, searchTerm: string): boolean {
+  const label = appStore
+    .getPluginDisplayName(plugin.manifest.name)
+    .toLowerCase();
+  const pluginName = plugin.manifest.name.toLowerCase();
+  const description = plugin.manifest.description?.toLowerCase() || "";
+
+  return (
+    label.includes(searchTerm) ||
+    pluginName.includes(searchTerm) ||
+    description.includes(searchTerm)
+  );
+}
+
+function buildPluginSearchItems(searchTerm: string): NavItem[] {
+  const matchedPlugins = [...plugins.value]
+    .filter((plugin) => matchesPlugin(plugin, searchTerm))
+    .sort((a, b) => {
+      const pinDelta =
+        Number(appStore.isPluginPinned(b.manifest.name)) -
+        Number(appStore.isPluginPinned(a.manifest.name));
+      if (pinDelta !== 0) {
+        return pinDelta;
+      }
+
+      return appStore
+        .getPluginDisplayName(a.manifest.name)
+        .localeCompare(appStore.getPluginDisplayName(b.manifest.name), "zh-CN", {
+          sensitivity: "base",
+        });
+    })
+    .slice(0, 8)
+    .map<NavItem>((plugin) => ({
+      target: `plugin-${plugin.manifest.name}-config`,
+      label: appStore.getPluginDisplayName(plugin.manifest.name),
+      icon: plugin.manifest.icon || "extension",
+      pluginName: plugin.manifest.name,
+      enabled: plugin.enabled,
+    }));
+
+  if (matchedPlugins.length === 0) {
+    return [];
+  }
+
+  return [{ category: "———— 插 件 搜 索 ————" }, ...matchedPlugins];
+}
+
+function buildPinnedPluginItems(): NavItem[] {
+  if (appStore.pinnedPlugins.length === 0) {
+    return [];
+  }
+
+  return [
+    { category: "固定插件" },
+    ...appStore.pinnedPlugins.map<NavItem>((plugin) => ({
+      target: `plugin-${plugin.manifest.name}-config`,
+      label: appStore.getPluginDisplayName(plugin.manifest.name),
+      icon: plugin.manifest.icon || "extension",
+      pluginName: plugin.manifest.name,
+      enabled: plugin.enabled,
+    })),
+  ];
+}
+
+function appendPinnedPluginItems(items: readonly NavItem[]): NavItem[] {
+  return [...items, ...buildPinnedPluginItems()];
 }
 
 function navigateTo(target: string | undefined, pluginName?: string) {
-  if (!target) return;
-
-  // 添加到最近访问（useLocalStorage 会自动持久化）
-  const navItem = navItems.value.find((item) => item.target === target);
-  if (navItem && navItem.label) {
-    recentVisits.value = recentVisits.value.filter(
-      (item) => item.target !== target
-    );
-    recentVisits.value.unshift({
-      target,
-      label: navItem.label,
-      icon: navItem.icon,
-      pluginName: navItem.pluginName,
-    });
-    recentVisits.value = recentVisits.value.slice(0, 5);
+  if (!target) {
+    return;
   }
 
   emit("navigateTo", target, pluginName);
 }
 
-function isActiveRoute(
-  target: string | undefined,
-  pluginName?: string
-): boolean {
-  if (!target) return false;
+function isActiveRoute(target: string | undefined, pluginName?: string): boolean {
+  if (!target) {
+    return false;
+  }
+
   if (pluginName) {
     return (
       route.name === "PluginConfig" &&
       String(route.params.pluginName || "") === pluginName
     );
   }
+
   const currentPath = route.path.replace("/AdminPanel", "");
   if (target === "dashboard") {
     return currentPath === "/" || currentPath === "/dashboard";
   }
+
   return currentPath === `/${target}`;
 }
 
@@ -155,13 +228,10 @@ function handleSidebarHover(entering: boolean) {
 
 function toggleRecentVisits() {
   isRecentVisitsCollapsed.value = !isRecentVisitsCollapsed.value;
-  // useLocalStorage 会自动持久化
 }
 
-// 暴露方法供父组件调用
 defineExpose({
   filteredNavItems,
-  recentVisits,
 });
 </script>
 
@@ -183,7 +253,6 @@ defineExpose({
   width: 72px;
 }
 
-/* 移动端适配 */
 @media (max-width: 768px) {
   .sidebar {
     position: fixed;

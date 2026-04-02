@@ -1,63 +1,68 @@
 <template>
-  <div class="sidebar-header" :class="{ 'sidebar-collapsed': isSidebarCollapsed && !isHoveringSidebar }">
+  <div
+    class="sidebar-header"
+    :class="{ 'sidebar-collapsed': isSidebarCollapsed && !isHoveringSidebar }"
+  >
     <h1 :class="{ 'fade-label-hidden': !isExpandedState }">控制中心</h1>
-    <div class="search-wrapper" :class="{ 'search-expanded': !isSidebarCollapsed || isHoveringSidebar }">
+    <div
+      class="search-wrapper"
+      :class="{ 'search-expanded': !isSidebarCollapsed || isHoveringSidebar }"
+    >
       <span class="material-symbols-outlined search-icon">search</span>
       <input
         id="sidebar-search"
         ref="searchInputRef"
         type="search"
-        :placeholder="isSidebarCollapsed && !isHoveringSidebar ? '' : '搜索功能…'"
+        :placeholder="isSidebarCollapsed && !isHoveringSidebar ? '' : '筛选侧栏入口...'"
         :value="searchQuery"
-        aria-label="搜索功能页面"
+        aria-label="筛选侧栏入口"
         autocomplete="off"
         @input="onInput"
-        @keydown.ctrl.k.prevent="focusInput"
+        @keydown.ctrl.k.prevent="emit('openCommandPalette')"
+        @keydown.meta.k.prevent="emit('openCommandPalette')"
+      />
+      <button
+        type="button"
+        class="search-shortcut"
+        :class="{ 'fade-label-hidden': !isExpandedState }"
+        title="打开全局跳转"
+        @click="emit('openCommandPalette')"
       >
-      <kbd class="search-shortcut" :class="{ 'fade-label-hidden': !isExpandedState }">Ctrl+K</kbd>
+        Ctrl+K
+      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useDebounceFn } from '@/composables/useDebounceFn'
+import { ref } from "vue";
 
 defineProps<{
-  isExpandedState: boolean
-  isSidebarCollapsed: boolean
-  isHoveringSidebar: boolean
-  searchQuery: string
-}>()
+  isExpandedState: boolean;
+  isSidebarCollapsed: boolean;
+  isHoveringSidebar: boolean;
+  searchQuery: string;
+}>();
 
 const emit = defineEmits<{
-  (e: 'update:searchQuery', value: string): void
-  (e: 'filterSidebar'): void
-}>()
+  (e: "update:searchQuery", value: string): void;
+  (e: "openCommandPalette"): void;
+}>();
 
-const searchInputRef = ref<HTMLInputElement | null>(null)
-
-// 使用防抖处理搜索输入（200ms 延迟，减少频繁过滤）
-const debouncedFilter = useDebounceFn(() => {
-  emit('filterSidebar')
-}, { delay: 200 })
+const searchInputRef = ref<HTMLInputElement | null>(null);
 
 function onInput(event: Event) {
-  const value = (event.target as HTMLInputElement).value
-  emit('update:searchQuery', value)
-  // 使用防抖调用过滤，减少计算次数
-  debouncedFilter()
+  const value = (event.target as HTMLInputElement).value;
+  emit("update:searchQuery", value);
 }
 
 function focusInput() {
-  if (searchInputRef.value) {
-    searchInputRef.value.focus()
-  }
+  searchInputRef.value?.focus();
 }
 
 defineExpose({
-  focusInput
-})
+  focusInput,
+});
 </script>
 
 <style scoped>
@@ -85,7 +90,11 @@ defineExpose({
   max-height: 40px;
   overflow: hidden;
   white-space: nowrap;
-  transition: opacity 0.2s ease, transform 0.22s ease, max-height 0.22s ease, margin-bottom 0.22s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.22s ease,
+    max-height 0.22s ease,
+    margin-bottom 0.22s ease;
 }
 
 .sidebar-header h1.fade-label-hidden {
@@ -97,7 +106,7 @@ defineExpose({
 }
 
 .sidebar-header h1::before {
-  content: '';
+  content: "";
   display: block;
   width: 4px;
   height: 18px;
@@ -122,13 +131,16 @@ defineExpose({
 
 .search-wrapper input {
   width: 100%;
-  padding: 10px 15px 10px 40px;
+  padding: 10px 74px 10px 40px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background-color: var(--input-bg);
   color: var(--primary-text);
   font-size: 0.9em;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .search-wrapper input:focus-visible {
@@ -145,18 +157,29 @@ defineExpose({
 
 .search-shortcut {
   position: absolute;
-  right: 10px;
-  padding: 2px 6px;
+  right: 8px;
+  padding: 3px 7px;
   font-size: 0.75em;
   color: var(--secondary-text);
   background: var(--accent-bg);
-  border-radius: 4px;
-  pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.22s ease;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    opacity 0.2s ease,
+    transform 0.22s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.search-shortcut:hover {
+  color: var(--primary-text);
+  border-color: color-mix(in srgb, var(--button-bg) 24%, transparent);
 }
 
 .search-shortcut.fade-label-hidden {
   opacity: 0;
   transform: translateX(-6px);
+  pointer-events: none;
 }
 </style>

@@ -1,5 +1,9 @@
 <template>
-  <div v-if="recentVisits.length > 0" class="recent-visits" :class="{ 'sidebar-collapsed': isSidebarCollapsed && !isHoveringSidebar }">
+  <div
+    v-if="recentVisits.length > 0 && (!isSidebarCollapsed || isHoveringSidebar)"
+    class="recent-visits"
+    :class="{ 'sidebar-collapsed': isSidebarCollapsed && !isHoveringSidebar }"
+  >
     <button
       type="button"
       class="recent-header recent-toggle"
@@ -42,7 +46,7 @@ interface RecentVisitItem {
 }
 
 defineProps<{
-  recentVisits: RecentVisitItem[]
+  recentVisits: readonly RecentVisitItem[]
   isSidebarCollapsed: boolean
   isHoveringSidebar: boolean
   isRecentVisitsCollapsed: boolean

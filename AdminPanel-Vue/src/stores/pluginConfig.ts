@@ -1,6 +1,7 @@
 import { computed, reactive, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { pluginApi } from '@/api'
+import { useAppStore } from '@/stores/app'
 import { parseEnvToList, serializeEnvAssignment, showMessage } from '@/utils'
 
 export type ConfigValue = string | boolean | number | null
@@ -40,6 +41,7 @@ interface PluginInfo {
 }
 
 export const usePluginConfigStore = defineStore('plugin-config', () => {
+  const appStore = useAppStore()
   const pluginData = ref<PluginInfo | null>(null)
   const configEntries = ref<ConfigEntry[]>([])
   const statusMessage = ref('')
@@ -181,6 +183,7 @@ export const usePluginConfigStore = defineStore('plugin-config', () => {
   async function loadPluginConfig(pluginName: string) {
     try {
       const plugins = await pluginApi.getPlugins(false)
+      appStore.loadPlugins(plugins)
       const plugin = plugins.find((item) => item.manifest.name === pluginName || item.name === pluginName)
 
       if (!plugin) {
@@ -269,7 +272,7 @@ export const usePluginConfigStore = defineStore('plugin-config', () => {
       const result = await pluginApi.togglePlugin(pluginName, enable, {
         loadingKey: 'plugin-config.toggle'
       })
-      showMessage(result.message || `${action}鎻掍欢鎴愬姛`, 'success')
+      showMessage(result.message || `${action}插件成功`, 'success')
       await loadPluginConfig(pluginName)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)

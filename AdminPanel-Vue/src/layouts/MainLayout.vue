@@ -29,7 +29,9 @@
         :is-sidebar-collapsed="isSidebarCollapsed"
         :is-hovering-sidebar="isHoveringSidebar"
         :is-hover-enabled="isHoverEnabled"
+        :recent-visits="recentVisits"
         @navigate-to="navigateTo"
+        @open-command-palette="openCommandPalette"
         @update:is-hovering-sidebar="isHoveringSidebar = $event"
       />
 
@@ -109,29 +111,49 @@
       class="dropdown-backdrop"
       @click="closeAllMenus"
     ></div>
+
+    <GlobalCommandPalette
+      :is-open="isCommandPaletteOpen"
+      :nav-items="navItems"
+      :plugins="plugins"
+      :recent-visits="recentVisits"
+      :navigation-usage="navigationUsage"
+      :pinned-plugin-names="pinnedPluginNames"
+      @close="closeCommandPalette"
+      @navigate-to="navigateTo"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import SolarSystemBg from "@/components/SolarSystemBg.vue";
+import GlobalCommandPalette from "@/components/layout/GlobalCommandPalette.vue";
 import TopBar from "@/components/layout/TopBar.vue";
 import Sidebar from "@/components/layout/Sidebar.vue";
 import Breadcrumb from "@/components/layout/Breadcrumb.vue";
 import { useMainLayoutState } from "@/composables/useMainLayoutState";
+import { useAppStore } from "@/stores/app";
 
+const appStore = useAppStore();
 const {
   isMobileMenuOpen,
   isImmersiveMode,
   isSidebarCollapsed,
   isHoveringSidebar,
   isHoverEnabled,
+  isCommandPaletteOpen,
   isSystemMenuOpen,
   isUserMenuOpen,
   hasNotifications,
   showBackToTop,
   contentRef,
+  recentVisits,
+  navigationUsage,
   currentPageTitle,
   navigateTo,
+  openCommandPalette,
+  closeCommandPalette,
   toggleMobileMenu,
   closeMobileMenu,
   toggleSidebarCollapse,
@@ -141,6 +163,10 @@ const {
   exitImmersiveMode,
   scrollToTop,
 } = useMainLayoutState();
+
+const navItems = computed(() => appStore.navItems);
+const plugins = computed(() => appStore.plugins);
+const pinnedPluginNames = computed(() => appStore.pinnedPluginNames);
 
 void contentRef;
 </script>
