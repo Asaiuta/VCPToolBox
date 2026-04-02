@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type * as VueModule from "vue";
+import {
+  createMockHTMLElement,
+  installPointerDomTestGlobals,
+} from "./pointerDomTestUtils";
 
 vi.mock("vue", async () => {
   const actual = await vi.importActual<typeof VueModule>("vue");
   return {
     ...actual,
     onMounted: () => {},
+    onBeforeUnmount: () => {},
   };
 });
 
@@ -55,6 +60,8 @@ describe("useVcptavernEditor", () => {
     mockShowMessage.mockReset();
     mockLoggerError.mockReset();
     vi.stubGlobal("confirm", vi.fn(() => true));
+    vi.unstubAllGlobals();
+    vi.stubGlobal("confirm", vi.fn(() => true));
   });
 
   it("loads presets and preset detail correctly", async () => {
@@ -86,7 +93,7 @@ describe("useVcptavernEditor", () => {
     expect(state.isNewPreset.value).toBe(false);
   });
 
-  it("supports new preset, rule add/remove and drag reorder", () => {
+  it("supports new preset, rule add/remove and pointer drag reorder", () => {
     const state = useVcptavernEditor();
 
     state.createNewPreset();
@@ -98,16 +105,52 @@ describe("useVcptavernEditor", () => {
     state.editorState.rules[0].name = "A";
     state.editorState.rules[1].name = "B";
 
-    state.prepareDrag(0, { target: { closest: () => ({}) } } as unknown as MouseEvent);
-    state.onDragStart(
-      0,
-      {
-        preventDefault: vi.fn(),
-        dataTransfer: { effectAllowed: "none" },
-      } as unknown as DragEvent
+    const rulesList = createMockHTMLElement();
+    const hoveredRule = createMockHTMLElement({
+      dataset: { ruleId: state.editorState.rules[1].id },
+      rect: { top: 20, height: 10 },
+    });
+    hoveredRule
+      .setClosest("[data-rule-id]", hoveredRule)
+      .setClosest('[data-rules-list="true"]', rulesList);
+
+    const draggedRule = createMockHTMLElement({
+      dataset: { ruleId: state.editorState.rules[0].id },
+      rect: { top: 0, height: 10 },
+    });
+    const captureTarget = createMockHTMLElement().setClosest(
+      "[data-rule-id]",
+      draggedRule
     );
-    state.onDrop(1);
-    state.onDragEnd();
+    installPointerDomTestGlobals(() => hoveredRule);
+
+    state.handleRulePointerDown(
+      state.editorState.rules[0].id,
+      {
+        pointerId: 1,
+        pointerType: "mouse",
+        button: 0,
+        clientX: 10,
+        clientY: 10,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+        currentTarget: captureTarget,
+      } as unknown as PointerEvent
+    );
+    state.handlePointerMove(
+      {
+        pointerId: 1,
+        clientX: 10,
+        clientY: 30,
+        preventDefault: vi.fn(),
+      } as unknown as PointerEvent
+    );
+    state.handlePointerUp(
+      {
+        pointerId: 1,
+        preventDefault: vi.fn(),
+      } as unknown as PointerEvent
+    );
 
     expect(state.editorState.rules[0].name).toBe("B");
     expect(state.editorState.rules[1].name).toBe("A");

@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type * as VueModule from "vue";
+import {
+  createMockHTMLElement,
+  installPointerDomTestGlobals,
+} from "./pointerDomTestUtils";
 
 vi.mock("vue", async () => {
   const actual = await vi.importActual<typeof VueModule>("vue");
   return {
     ...actual,
     onMounted: () => {},
+    onBeforeUnmount: () => {},
   };
 });
 
@@ -51,6 +56,7 @@ describe("usePreprocessorOrderManager", () => {
     mockSavePreprocessorOrder.mockReset();
     mockShowMessage.mockReset();
     mockLoggerError.mockReset();
+    vi.unstubAllGlobals();
   });
 
   it("loads preprocessors from order/newOrder", async () => {
@@ -75,7 +81,7 @@ describe("usePreprocessorOrderManager", () => {
     ]);
   });
 
-  it("supports drag reorder", () => {
+  it("supports pointer drag reorder", () => {
     const state = usePreprocessorOrderManager();
     state.preprocessors.value = [
       { name: "a", displayName: "A" },
@@ -83,24 +89,60 @@ describe("usePreprocessorOrderManager", () => {
       { name: "c", displayName: "C" },
     ];
 
-    const dragStartEvent = {
-      dataTransfer: { effectAllowed: "none" },
-    } as unknown as DragEvent;
-    const dropEvent = {
-      preventDefault: vi.fn(),
-      dataTransfer: { dropEffect: "none" },
-    } as unknown as DragEvent;
+    const listElement = createMockHTMLElement();
+    const hoveredItem = createMockHTMLElement({
+      dataset: { preprocessorName: "c" },
+      rect: { top: 20, height: 10 },
+    });
+    hoveredItem
+      .setClosest("[data-preprocessor-name]", hoveredItem)
+      .setClosest('[data-preprocessor-list="true"]', listElement);
 
-    state.onDragStart(dragStartEvent, 0);
-    state.onDrop(dropEvent, 2);
-    state.onDragEnd();
+    const draggedItem = createMockHTMLElement({
+      dataset: { preprocessorName: "a" },
+      rect: { top: 0, height: 10 },
+    });
+    const captureTarget = createMockHTMLElement().setClosest(
+      "[data-preprocessor-name]",
+      draggedItem
+    );
+    installPointerDomTestGlobals(() => hoveredItem);
+
+    state.handleDragHandlePointerDown(
+      "a",
+      {
+        pointerId: 1,
+        pointerType: "mouse",
+        button: 0,
+        clientX: 10,
+        clientY: 10,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+        currentTarget: captureTarget,
+      } as unknown as PointerEvent
+    );
+
+    state.handlePointerMove(
+      {
+        pointerId: 1,
+        clientX: 10,
+        clientY: 30,
+        preventDefault: vi.fn(),
+      } as unknown as PointerEvent
+    );
+    state.handlePointerUp(
+      {
+        pointerId: 1,
+        preventDefault: vi.fn(),
+      } as unknown as PointerEvent
+    );
 
     expect(state.preprocessors.value.map((item) => item.name)).toEqual([
       "b",
       "c",
       "a",
     ]);
-    expect(state.draggingIndex.value).toBeNull();
+    expect(state.draggingPluginName.value).toBeNull();
   });
 
   it("saves order with expected payload", async () => {

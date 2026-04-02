@@ -3,7 +3,8 @@
     <div class="page-header">
       <div>
         <p class="description">
-          管理上下文注入预设与规则，支持排序、启用开关和规则类型配置。
+          管理上下文注入预设与规则。按住规则左侧手柄可像仪表盘一样实时预览排序位置，
+          并在释放时提交最终顺序。
         </p>
       </div>
       <div class="header-actions">
@@ -95,18 +96,30 @@
         暂无规则，点击“添加规则”创建。
       </div>
 
-      <div class="rules-list" @dragover.prevent>
+      <TransitionGroup
+        tag="div"
+        name="drag-sort"
+        class="rules-list"
+        data-rules-list="true"
+      >
         <article
-          v-for="(rule, index) in editorState.rules"
+          v-for="(rule, index) in orderedRules"
           :key="rule.id"
-          class="rule-card"
-          :class="{ dragging: dragState.draggingIndex === index }"
-          :draggable="dragState.enabledIndex === index"
-          @mousedown="prepareDrag(index, $event)"
-          @dragstart="onDragStart(index, $event)"
-          @dragover.prevent
-          @drop="onDrop(index)"
-          @dragend="onDragEnd"
+          :data-rule-id="rule.id"
+          :class="[
+            'rule-card',
+            {
+              'rule-card--dragging': dragState.draggingRuleId === rule.id,
+              'rule-card--drop-before':
+                dragState.draggingRuleId !== null &&
+                dragState.dragOverRuleId === rule.id &&
+                dragState.dropPlacement === 'before',
+              'rule-card--drop-after':
+                dragState.draggingRuleId !== null &&
+                dragState.dragOverRuleId === rule.id &&
+                dragState.dropPlacement === 'after',
+            },
+          ]"
         >
           <div class="rule-head">
             <button
@@ -114,6 +127,7 @@
               type="button"
               aria-label="拖动排序"
               title="拖动排序"
+              @pointerdown="handleRulePointerDown(rule.id, $event)"
             >
               ⋮⋮
             </button>
@@ -192,7 +206,7 @@
             </div>
           </div>
         </article>
-      </div>
+      </TransitionGroup>
 
       <div class="editor-actions">
         <button
@@ -203,6 +217,13 @@
         >
           {{ isSaving ? "保存中…" : "保存预设" }}
         </button>
+      </div>
+    </div>
+
+    <div v-if="dragGhost" ref="dragGhostElement" class="rule-drag-ghost">
+      <div class="rule-drag-ghost-shell">
+        <div class="rule-drag-ghost-title">{{ dragGhost.label }}</div>
+        <div class="rule-drag-ghost-meta">{{ dragGhost.meta }}</div>
       </div>
     </div>
   </section>
@@ -219,19 +240,21 @@ const {
   isEditorVisible,
   isNewPreset,
   dragState,
+  dragGhost,
+  dragGhostElement,
+  orderedRules,
   editorState,
   fetchPresets,
   loadPreset,
   createNewPreset,
   addRule,
   removeRule,
-  prepareDrag,
-  onDragStart,
-  onDrop,
-  onDragEnd,
+  handleRulePointerDown,
   deletePreset,
   savePreset,
 } = useVcptavernEditor();
+
+void dragGhostElement
 </script>
 
 <style scoped>
@@ -246,10 +269,6 @@ const {
   justify-content: space-between;
   gap: 16px;
   align-items: flex-start;
-}
-
-.page-header h2 {
-  margin: 0;
 }
 
 .header-actions {
@@ -338,17 +357,51 @@ button:focus-visible {
 }
 
 .rule-card {
+  position: relative;
   border: 1px solid var(--border-color);
-  border-radius: 10px;
-  background: var(--tertiary-bg);
-  padding: 12px;
+  border-radius: 12px;
+  background: var(--secondary-bg);
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+  will-change: transform;
+  transition:
+    opacity 0.18s ease,
+    filter 0.18s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.rule-card.dragging {
-  opacity: 0.65;
+.rule-card:hover {
+  border-color: var(--highlight-text);
+  box-shadow: 0 10px 24px -20px rgba(56, 189, 248, 0.45);
+}
+
+.rule-card--dragging {
+  opacity: 0.16;
+  filter: saturate(0.88);
+}
+
+.rule-card--drop-before::before,
+.rule-card--drop-after::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  z-index: 2;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--highlight-text);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.22);
+}
+
+.rule-card--drop-before::before {
+  top: -6px;
+}
+
+.rule-card--drop-after::after {
+  bottom: -6px;
 }
 
 .rule-head {
@@ -365,8 +418,11 @@ button:focus-visible {
   border-radius: 8px;
   width: 36px;
   height: 36px;
+  padding: 0;
   cursor: grab;
   font-size: 16px;
+  user-select: none;
+  touch-action: none;
 }
 
 .drag-handle:active {
@@ -403,6 +459,55 @@ button:focus-visible {
 .small {
   padding: 6px 10px;
   font-size: 0.85rem;
+}
+
+.rule-drag-ghost {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  will-change: left, top, transform;
+}
+
+.rule-drag-ghost-shell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100%;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--highlight-text) 35%, var(--border-color));
+  border-radius: 12px;
+  background: var(--secondary-bg);
+  box-shadow: 0 18px 36px -24px rgba(15, 23, 42, 0.55);
+}
+
+.rule-drag-ghost-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--primary-text);
+}
+
+.rule-drag-ghost-meta {
+  margin-top: 6px;
+  color: var(--secondary-text);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  text-transform: capitalize;
+}
+
+.drag-sort-move {
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.drag-sort-enter-active,
+.drag-sort-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.drag-sort-enter-from,
+.drag-sort-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
 }
 
 @media (max-width: 980px) {

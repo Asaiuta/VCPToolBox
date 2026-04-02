@@ -107,6 +107,7 @@ import MissingCardHost from "@/dashboard/hosts/MissingCardHost.vue";
 import WebComponentCardHost from "@/dashboard/hosts/WebComponentCardHost.vue";
 import { useDashboardState } from "@/composables/useDashboardState";
 import { useAppStore } from "@/stores/app";
+import { reorderIdsByPlacement } from "@/utils/pointerReorder";
 
 interface DashboardGridMetrics {
   columnCount: number;
@@ -332,31 +333,6 @@ function getDropPlacementForTarget(
   return deltaY < 0 ? "before" : "after";
 }
 
-function reorderIds(
-  source: readonly string[],
-  draggedId: string,
-  targetId: string,
-  placement: DashboardDropPlacement
-): string[] {
-  const fromIndex = source.indexOf(draggedId);
-  const targetIndex = source.indexOf(targetId);
-
-  if (fromIndex < 0 || targetIndex < 0) {
-    return [...source];
-  }
-
-  const insertionIndex = placement === "after" ? targetIndex + 1 : targetIndex;
-  const normalizedToIndex = insertionIndex > fromIndex ? insertionIndex - 1 : insertionIndex;
-  if (normalizedToIndex === fromIndex) {
-    return [...source];
-  }
-
-  const next = [...source];
-  const [movedItem] = next.splice(fromIndex, 1);
-  next.splice(normalizedToIndex, 0, movedItem);
-  return next;
-}
-
 function updatePreviewOrder(clientX: number, clientY: number) {
   const state = pointerState.value;
   if (!draggingId.value || !state || state.mode !== "reorder") {
@@ -381,7 +357,12 @@ function updatePreviewOrder(clientX: number, clientY: number) {
 
   const workingOrder = previewOrder.value ?? [...instances.value.map((instance) => instance.instanceId)];
   const placement = getDropPlacementForTarget(cardElement, clientX, clientY);
-  const nextOrder = reorderIds(workingOrder, draggingId.value, targetId, placement);
+  const nextOrder = reorderIdsByPlacement(
+    workingOrder,
+    draggingId.value,
+    targetId,
+    placement
+  );
 
   dragOverId.value = targetId;
   dropPlacement.value = placement;
@@ -685,7 +666,7 @@ function handleGlobalPointerCancel(event: PointerEvent) {
     return;
   }
 
-  finishInteraction(true);
+  finishInteraction(false);
 }
 
 function handleWindowBlur() {

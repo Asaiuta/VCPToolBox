@@ -1,12 +1,15 @@
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { vcptavernApi } from '@/api'
+import type { RuleRole, TavernPreset, TavernRule } from '@/api'
+import { usePointerDragSession } from '@/composables/usePointerDragSession'
 import { showMessage } from '@/utils'
 import { createLogger } from '@/utils/logger'
-import type {
-  RuleRole,
-  TavernPreset,
-  TavernRule
-} from '@/api'
+import {
+  getVerticalDropPlacement,
+  reorderIdsByPlacement,
+  type PointerDropPlacement,
+} from '@/utils/pointerReorder'
+
 const logger = createLogger('VcptavernEditor')
 
 export function useVcptavernEditor() {
@@ -17,16 +20,97 @@ export function useVcptavernEditor() {
   const isEditorVisible = ref(false)
   const isNewPreset = ref(false)
 
-  const dragState = reactive({
-    enabledIndex: -1,
-    draggingIndex: -1
-  })
+  const previewOrder = ref<string[] | null>(null)
+  const draggingRuleId = ref<string | null>(null)
+  const dragOverRuleId = ref<string | null>(null)
+  const dropPlacement = ref<PointerDropPlacement>('after')
 
   const editorState = reactive({
     name: '',
     description: '',
-    rules: [] as TavernRule[]
+    rules: [] as TavernRule[],
   })
+
+  const dragState = {
+    get draggingRuleId(): string | null {
+      return draggingRuleId.value
+    },
+    get dragOverRuleId(): string | null {
+      return dragOverRuleId.value
+    },
+    get dropPlacement(): PointerDropPlacement {
+      return dropPlacement.value
+    },
+  }
+
+  const orderedRules = computed<TavernRule[]>(() => {
+    if (!previewOrder.value) {
+      return editorState.rules
+    }
+
+    const itemMap = new Map(editorState.rules.map(rule => [rule.id, rule] as const))
+    return previewOrder.value
+      .map(id => itemMap.get(id))
+      .filter((rule): rule is TavernRule => rule !== undefined)
+  })
+
+  function getCommittedOrder(): string[] {
+    return editorState.rules.map(rule => rule.id)
+  }
+
+  function getWorkingOrder(): string[] {
+    return previewOrder.value ?? getCommittedOrder()
+  }
+
+  function commitPreviewOrder(nextOrder: readonly string[]) {
+    const itemMap = new Map(editorState.rules.map(rule => [rule.id, rule] as const))
+    editorState.rules = nextOrder
+      .map(id => itemMap.get(id))
+      .filter((rule): rule is TavernRule => rule !== undefined)
+  }
+
+  function updatePreviewOrder(clientX: number, clientY: number) {
+    const draggedId = draggingRuleId.value
+    if (!draggedId || typeof document === 'undefined') {
+      return
+    }
+
+    const hoveredElement = document.elementFromPoint(clientX, clientY)
+    if (!(hoveredElement instanceof Element)) {
+      dragOverRuleId.value = null
+      return
+    }
+
+    const workingOrder = getWorkingOrder()
+    const cardElement = hoveredElement.closest('[data-rule-id]') as HTMLElement | null
+    const listElement = hoveredElement.closest('[data-rules-list="true"]') as HTMLElement | null
+
+    let targetId: string | null = null
+    let placement: PointerDropPlacement = 'after'
+
+    if (cardElement) {
+      targetId = cardElement.dataset.ruleId ?? null
+      placement = getVerticalDropPlacement(cardElement, clientY)
+    } else if (listElement && workingOrder.length > 0) {
+      targetId = workingOrder[workingOrder.length - 1] ?? null
+      placement = 'after'
+    }
+
+    if (!targetId) {
+      dragOverRuleId.value = null
+      return
+    }
+
+    const nextOrder = reorderIdsByPlacement(workingOrder, draggedId, targetId, placement)
+    const hasChanged = nextOrder.some((id, index) => id !== workingOrder[index])
+
+    dragOverRuleId.value = hasChanged ? targetId : null
+    dropPlacement.value = placement
+
+    if (hasChanged) {
+      previewOrder.value = nextOrder
+    }
+  }
 
   function newRule(): TavernRule {
     return {
@@ -39,12 +123,12 @@ export function useVcptavernEditor() {
       depth: 1,
       content: {
         role: 'system',
-        content: ''
+        content: '',
       },
       ui: {
         textareaWidth: '',
-        textareaHeight: ''
-      }
+        textareaHeight: '',
+      },
     }
   }
 
@@ -56,19 +140,57 @@ export function useVcptavernEditor() {
       id: rule.id || base.id,
       content: {
         role: (rule.content?.role as RuleRole) || base.content.role,
-        content: rule.content?.content || ''
-      }
+        content: rule.content?.content || '',
+      },
     }
   }
+
+  const {
+    dragGhost,
+    dragGhostElement,
+    startPointerDrag,
+  } = usePointerDragSession<
+    { ruleId: string },
+    { label: string; meta: string }
+  >({
+    createGhost: ({ ruleId }) => {
+      const activeRule = editorState.rules.find(rule => rule.id === ruleId) ?? null
+      if (!activeRule) {
+        return null
+      }
+
+      return {
+        label: activeRule.name || '未命名规则',
+        meta: activeRule.type,
+      }
+    },
+    onActivate: ({ item }) => {
+      draggingRuleId.value = item.ruleId
+      previewOrder.value = getCommittedOrder()
+    },
+    onFrame: state => {
+      updatePreviewOrder(state.currentX, state.currentY)
+    },
+    onCommit: () => {
+      if (previewOrder.value) {
+        commitPreviewOrder(previewOrder.value)
+      }
+    },
+    onClear: () => {
+      previewOrder.value = null
+      draggingRuleId.value = null
+      dragOverRuleId.value = null
+      dropPlacement.value = 'after'
+    },
+  })
 
   async function fetchPresets() {
     isLoading.value = true
     try {
-      const list = await vcptavernApi.getPresets({
+      presetNames.value = await vcptavernApi.getPresets({
         showLoader: false,
-        loadingKey: 'vcptavern.presets.load'
+        loadingKey: 'vcptavern.presets.load',
       })
-      presetNames.value = list
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       logger.error('获取预设列表失败:', error)
@@ -87,11 +209,12 @@ export function useVcptavernEditor() {
     try {
       const data = await vcptavernApi.getPreset(name, {
         showLoader: false,
-        loadingKey: 'vcptavern.preset.load'
+        loadingKey: 'vcptavern.preset.load',
       })
+
       editorState.name = name
       editorState.description = data.description || ''
-      editorState.rules = (data.rules || []).map((rule) => normalizeRule(rule))
+      editorState.rules = (data.rules || []).map(rule => normalizeRule(rule))
       isEditorVisible.value = true
       isNewPreset.value = false
       showMessage(`已加载预设：${name}`, 'success')
@@ -118,39 +241,35 @@ export function useVcptavernEditor() {
   }
 
   function removeRule(index: number) {
-    editorState.rules.splice(index, 1)
-  }
-
-  function prepareDrag(index: number, event: MouseEvent) {
-    const target = event.target as HTMLElement | null
-    dragState.enabledIndex = target?.closest('.drag-handle') ? index : -1
-  }
-
-  function onDragStart(index: number, event: DragEvent) {
-    if (dragState.enabledIndex !== index) {
-      event.preventDefault()
-      return
-    }
-    dragState.draggingIndex = index
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'move'
-    }
-  }
-
-  function onDrop(targetIndex: number) {
-    const sourceIndex = dragState.draggingIndex
-    if (sourceIndex < 0 || sourceIndex === targetIndex) {
+    const currentRules = orderedRules.value
+    const targetRule = currentRules[index]
+    if (!targetRule) {
       return
     }
 
-    const dragged = editorState.rules[sourceIndex]
-    editorState.rules.splice(sourceIndex, 1)
-    editorState.rules.splice(targetIndex, 0, dragged)
+    const sourceIndex = editorState.rules.findIndex(rule => rule.id === targetRule.id)
+    if (sourceIndex >= 0) {
+      editorState.rules.splice(sourceIndex, 1)
+    }
   }
 
-  function onDragEnd() {
-    dragState.enabledIndex = -1
-    dragState.draggingIndex = -1
+  function handleRulePointerDown(ruleId: string, event: PointerEvent) {
+    const currentTarget = event.currentTarget
+    if (!(currentTarget instanceof HTMLElement)) {
+      return
+    }
+
+    const cardElement = currentTarget.closest('[data-rule-id]') as HTMLElement | null
+    if (!(cardElement instanceof HTMLElement)) {
+      return
+    }
+
+    startPointerDrag({
+      item: { ruleId },
+      event,
+      itemElement: cardElement,
+      captureElement: currentTarget,
+    })
   }
 
   async function deletePreset() {
@@ -166,7 +285,7 @@ export function useVcptavernEditor() {
     isLoading.value = true
     try {
       await vcptavernApi.deletePreset(name, {
-        loadingKey: 'vcptavern.preset.delete'
+        loadingKey: 'vcptavern.preset.delete',
       })
       showMessage('预设删除成功', 'success')
       createNewPreset()
@@ -201,7 +320,7 @@ export function useVcptavernEditor() {
     try {
       const payload: TavernPreset = {
         description: editorState.description.trim(),
-        rules: editorState.rules.map((rule) => {
+        rules: editorState.rules.map(rule => {
           const normalized = normalizeRule(rule)
           if (normalized.type !== 'depth') {
             delete normalized.depth
@@ -214,11 +333,11 @@ export function useVcptavernEditor() {
             normalized.content.role = 'system'
           }
           return normalized
-        })
+        }),
       }
 
       await vcptavernApi.savePreset(name, payload, {
-        loadingKey: 'vcptavern.preset.save'
+        loadingKey: 'vcptavern.preset.save',
       })
 
       showMessage('预设保存成功', 'success')
@@ -247,17 +366,17 @@ export function useVcptavernEditor() {
     isEditorVisible,
     isNewPreset,
     dragState,
+    dragGhost,
+    dragGhostElement,
+    orderedRules,
     editorState,
     fetchPresets,
     loadPreset,
     createNewPreset,
     addRule,
     removeRule,
-    prepareDrag,
-    onDragStart,
-    onDrop,
-    onDragEnd,
+    handleRulePointerDown,
     deletePreset,
-    savePreset
+    savePreset,
   }
 }
