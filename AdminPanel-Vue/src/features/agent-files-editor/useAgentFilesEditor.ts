@@ -2,11 +2,7 @@ import { onMounted, ref } from 'vue'
 import { agentApi } from '@/api'
 import { showMessage } from '@/utils'
 import { createLogger } from '@/utils/logger'
-
-interface AgentMapEntry {
-  name: string
-  file: string
-}
+import type { AgentFilesStatusType, AgentMapEntry } from './types'
 
 const logger = createLogger('AgentFilesEditor')
 
@@ -15,18 +11,18 @@ export function useAgentFilesEditor() {
   const availableFiles = ref<string[]>([])
   const isLoadingFiles = ref(false)
   const statusMessage = ref('')
-  const statusType = ref<'info' | 'success' | 'error'>('info')
+  const statusType = ref<AgentFilesStatusType>('info')
   const editingFile = ref('')
   const fileContent = ref('')
   const fileStatusMessage = ref('')
-  const fileStatusType = ref<'info' | 'success' | 'error'>('info')
+  const fileStatusType = ref<AgentFilesStatusType>('info')
 
   async function loadAvailableFiles() {
     isLoadingFiles.value = true
     try {
       availableFiles.value = await agentApi.getAgentFiles({}, {
         showLoader: false,
-        loadingKey: 'agent-files.available-files.load'
+        loadingKey: 'agent-files.available-files.load',
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
@@ -42,12 +38,12 @@ export function useAgentFilesEditor() {
     try {
       const data = await agentApi.getAgentMap({}, {
         showLoader: false,
-        loadingKey: 'agent-files.map.load'
+        loadingKey: 'agent-files.map.load',
       })
       if (data && typeof data === 'object') {
         agentMap.value = Object.entries(data).map(([name, file]) => ({
           name,
-          file: file as string
+          file: file as string,
         }))
       }
     } catch (error) {
@@ -60,14 +56,14 @@ export function useAgentFilesEditor() {
   async function saveAgentMap() {
     try {
       const agentMapObject: Record<string, string> = {}
-      agentMap.value.forEach(entry => {
+      agentMap.value.forEach((entry) => {
         if (entry.name && entry.file) {
           agentMapObject[entry.name] = entry.file
         }
       })
 
       await agentApi.saveAgentMap(agentMapObject, {
-        loadingKey: 'agent-files.map.save'
+        loadingKey: 'agent-files.map.save',
       })
       statusMessage.value = 'Agent 映射表已保存！'
       statusType.value = 'success'
@@ -83,7 +79,7 @@ export function useAgentFilesEditor() {
   function addAgentEntry() {
     agentMap.value.push({
       name: '新 Agent',
-      file: '新文件.txt'
+      file: '新文件.txt',
     })
   }
 
@@ -95,11 +91,13 @@ export function useAgentFilesEditor() {
 
   async function createAgentFile() {
     const fileName = prompt('请输入新文件名 (例如：MyAgent.txt):')
-    if (!fileName) return
+    if (!fileName) {
+      return
+    }
 
     try {
       await agentApi.createAgentFile(fileName, undefined, {
-        loadingKey: 'agent-files.file.create'
+        loadingKey: 'agent-files.file.create',
       })
       showMessage(`文件 ${fileName} 已创建！`, 'success')
       loadAgentMap()
@@ -110,13 +108,15 @@ export function useAgentFilesEditor() {
   }
 
   async function selectAgentFile(fileName: string) {
-    if (!fileName) return
+    if (!fileName) {
+      return
+    }
 
     editingFile.value = fileName
     try {
       fileContent.value = await agentApi.getAgentFileContent(fileName, {}, {
         showLoader: false,
-        loadingKey: 'agent-files.file.load'
+        loadingKey: 'agent-files.file.load',
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
@@ -125,11 +125,13 @@ export function useAgentFilesEditor() {
   }
 
   async function saveAgentFile() {
-    if (!editingFile.value) return
+    if (!editingFile.value) {
+      return
+    }
 
     try {
       await agentApi.saveAgentFile(editingFile.value, fileContent.value, {
-        loadingKey: 'agent-files.file.save'
+        loadingKey: 'agent-files.file.save',
       })
       fileStatusMessage.value = '文件已保存！'
       fileStatusType.value = 'success'
@@ -163,6 +165,6 @@ export function useAgentFilesEditor() {
     removeAgentEntry,
     createAgentFile,
     selectAgentFile,
-    saveAgentFile
+    saveAgentFile,
   }
 }

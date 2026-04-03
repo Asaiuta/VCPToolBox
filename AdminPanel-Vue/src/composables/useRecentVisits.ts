@@ -40,9 +40,6 @@ export const RECENT_VISITS_STORAGE_KEY = "sidebarRecentVisits";
 export const RECENT_VISITS_LIMIT = 5;
 export const NAVIGATION_USAGE_STORAGE_KEY = "navigationUsage";
 
-let recentVisitsRef: Ref<RecentVisit[]> | null = null;
-let navigationUsageRef: Ref<NavigationUsageMap> | null = null;
-
 function getPluginName(plugin: PluginInfo): string {
   return plugin.manifest.name || plugin.name;
 }
@@ -165,23 +162,9 @@ export function recordNavigationVisit({
 }
 
 export function useRecentVisits(): Ref<RecentVisit[]> {
-  if (!recentVisitsRef) {
-    recentVisitsRef = useLocalStorage<RecentVisit[]>(
-      RECENT_VISITS_STORAGE_KEY,
-      []
-    );
-  }
-
-  return recentVisitsRef;
+  return useLocalStorage<RecentVisit[]>(RECENT_VISITS_STORAGE_KEY, []);
 }
 
 export function useNavigationUsage(): Ref<NavigationUsageMap> {
-  if (!navigationUsageRef) {
-    navigationUsageRef = useLocalStorage<NavigationUsageMap>(
-      NAVIGATION_USAGE_STORAGE_KEY,
-      {}
-    );
-  }
-
-  return navigationUsageRef;
+  return useLocalStorage<NavigationUsageMap>(NAVIGATION_USAGE_STORAGE_KEY, {});
 }

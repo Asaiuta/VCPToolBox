@@ -52,7 +52,7 @@
 
 <script setup lang="ts">
 import { formatDate } from '@/utils'
-import type { ForumPost } from './types'
+import type { ForumPost } from '@/features/vcp-forum/types'
 
 defineProps<{
   posts: ForumPost[]

@@ -1,12 +1,14 @@
-import { ref, onMounted, onUnmounted, computed, nextTick, watch } from "vue";
+import { ref, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { pluginApi } from "@/api";
+import { useMainLayoutShellEffects } from "@/app/shell/useMainLayoutShellEffects";
 import {
   recordNavigationVisit,
   useNavigationUsage,
   useRecentVisits,
 } from "@/composables/useRecentVisits";
 import { useAppStore } from "@/stores/app";
+import { navigateByTarget } from "@/app/routes/navigation";
 import { showMessage } from "@/utils";
 import { createLogger } from "@/utils/logger";
 import { resolveRouteTitle } from "@/utils/navigation";
@@ -36,7 +38,6 @@ export function useMainLayoutState() {
   const contentRef = ref<HTMLElement | null>(null);
   const recentVisits = useRecentVisits();
   const navigationUsage = useNavigationUsage();
-  let originalBodyOverflow = "";
 
   const currentPageTitle = computed(() =>
     resolveRouteTitle(route, appStore.navItems, appStore.plugins)
@@ -54,11 +55,7 @@ export function useMainLayoutState() {
     recentVisits.value = nextNavigationState.recentVisits;
     navigationUsage.value = nextNavigationState.navigationUsage;
 
-    if (pluginName) {
-      router.push({ name: "PluginConfig", params: { pluginName } });
-    } else {
-      router.push({ path: `/${target}` });
-    }
+    navigateByTarget(router, target, pluginName);
     closeCommandPalette();
     closeMobileMenu();
     closeAllMenus();
@@ -104,18 +101,6 @@ export function useMainLayoutState() {
     isUserMenuOpen.value = false;
   }
 
-  function enterImmersiveMode() {
-    isImmersiveMode.value = true;
-    document.documentElement.classList.add("ui-hidden-immersive");
-    document.body.style.overflow = "hidden";
-  }
-
-  function exitImmersiveMode() {
-    isImmersiveMode.value = false;
-    document.documentElement.classList.remove("ui-hidden-immersive");
-    document.body.style.overflow = originalBodyOverflow;
-  }
-
   function scrollToTop() {
     if (contentRef.value) {
       contentRef.value.scrollTo({ top: 0, behavior: "smooth" });
@@ -124,55 +109,6 @@ export function useMainLayoutState() {
 
   function handleScroll() {
     showBackToTop.value = (contentRef.value?.scrollTop || 0) > 300;
-  }
-
-  let logoClickCount = 0;
-  let logoClickTimer: number | null = null;
-
-  function handleLogoClick() {
-    logoClickCount++;
-    if (logoClickCount === 1) {
-      logoClickTimer = window.setTimeout(() => {
-        logoClickCount = 0;
-        if (logoClickTimer) {
-          logoClickTimer = null;
-        }
-      }, 3000);
-    } else if (logoClickCount >= 5) {
-      enterImmersiveMode();
-      logoClickCount = 0;
-      if (logoClickTimer) {
-        clearTimeout(logoClickTimer);
-        logoClickTimer = null;
-      }
-    }
-  }
-
-  function handleClickOutside(event: MouseEvent) {
-    const target = event.target as HTMLElement;
-    if (!target.closest(".dropdown")) {
-      closeAllMenus();
-    }
-  }
-
-  function handleKeydown(event: KeyboardEvent) {
-    if ((event.ctrlKey || event.metaKey) && event.key === "k") {
-      event.preventDefault();
-      openCommandPalette();
-      return;
-    }
-
-    if (event.key === "Escape") {
-      if (isCommandPaletteOpen.value) {
-        closeCommandPalette();
-        return;
-      }
-      if (isImmersiveMode.value) {
-        exitImmersiveMode();
-      }
-      closeAllMenus();
-      closeMobileMenu();
-    }
   }
 
   async function loadPluginNavigation() {
@@ -186,62 +122,35 @@ export function useMainLayoutState() {
     }
   }
 
-  watch(
-    () => route.fullPath,
-    () => {
+  const shellEffects = useMainLayoutShellEffects({
+    contentRef,
+    isImmersiveMode,
+    isCommandPaletteOpen,
+    getRouteFullPath: () => route.fullPath,
+    onOpenCommandPalette: openCommandPalette,
+    onCloseCommandPalette: closeCommandPalette,
+    onCloseMobileMenu: closeMobileMenu,
+    onCloseAllMenus: closeAllMenus,
+    onRouteChanged: () => {
       closeCommandPalette();
       closeMobileMenu();
       closeAllMenus();
-      if (contentRef.value) {
-        contentRef.value.scrollTop = 0;
-      }
-    }
-  );
-
-  onMounted(async () => {
-    originalBodyOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    document.addEventListener("click", handleClickOutside);
-    document.addEventListener("keydown", handleKeydown);
-
-    await nextTick();
-    if (contentRef.value) {
-      contentRef.value.addEventListener("scroll", handleScroll, {
-        passive: true,
-      });
-    }
-
-    const brandElement = document.querySelector(".brand");
-    if (brandElement) {
-      brandElement.addEventListener("click", handleLogoClick);
-    }
-
-    const savedTheme = localStorage.getItem("theme") as "dark" | "light" | null;
-    if (savedTheme) {
-      document.documentElement.setAttribute("data-theme", savedTheme);
-    }
-
-    await loadPluginNavigation();
+    },
+    onEnterImmersiveMode: enterImmersiveMode,
+    onExitImmersiveMode: exitImmersiveMode,
+    onScroll: handleScroll,
+    onLoadPluginNavigation: loadPluginNavigation,
   });
 
-  onUnmounted(() => {
-    if (contentRef.value) {
-      contentRef.value.removeEventListener("scroll", handleScroll);
-    }
-    document.removeEventListener("click", handleClickOutside);
-    document.removeEventListener("keydown", handleKeydown);
-    document.body.style.overflow = originalBodyOverflow;
+  function enterImmersiveMode() {
+    isImmersiveMode.value = true;
+    shellEffects.activateImmersiveDomState();
+  }
 
-    const brandElement = document.querySelector(".brand");
-    if (brandElement) {
-      brandElement.removeEventListener("click", handleLogoClick);
-    }
-
-    if (logoClickTimer) {
-      clearTimeout(logoClickTimer);
-    }
-  });
+  function exitImmersiveMode() {
+    isImmersiveMode.value = false;
+    shellEffects.deactivateImmersiveDomState();
+  }
 
   return {
     isMobileMenuOpen,

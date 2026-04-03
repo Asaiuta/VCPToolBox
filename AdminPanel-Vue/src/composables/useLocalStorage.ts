@@ -29,6 +29,12 @@ export interface UseLocalStorageOptions<T> {
   listenExternal?: boolean;
   /** 是否监听 storage 事件 */
   sync?: boolean;
+  /** 是否深度监听（默认仅对象/数组开启） */
+  deep?: boolean;
+}
+
+function shouldUseDeepWatch(value: unknown): boolean {
+  return typeof value === "object" && value !== null;
 }
 
 /**
@@ -49,6 +55,7 @@ export function useLocalStorage<T>(
     parser = JSON.parse,
     listenExternal = false,
     sync = true,
+    deep = shouldUseDeepWatch(initialValue),
   } = options;
 
   /** 读取 localStorage 值 */
@@ -87,7 +94,7 @@ export function useLocalStorage<T>(
         logger.warn(`Error setting localStorage key "${key}":`, error);
       }
     },
-    { deep: true }
+    { deep }
   );
 
   /** 监听 storage 事件（多标签页同步） */
@@ -134,6 +141,7 @@ export function useSessionStorage<T>(
     parser = JSON.parse,
     listenExternal = false,
     sync = true,
+    deep = shouldUseDeepWatch(initialValue),
   } = options;
 
   const readValue = (): T => {
@@ -168,7 +176,7 @@ export function useSessionStorage<T>(
         logger.warn(`Error setting sessionStorage key "${key}":`, error);
       }
     },
-    { deep: true }
+    { deep }
   );
 
   if (sync && typeof window !== "undefined") {

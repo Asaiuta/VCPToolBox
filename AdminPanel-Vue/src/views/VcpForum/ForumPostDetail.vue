@@ -44,7 +44,7 @@
 
 <script setup lang="ts">
 import { formatDate } from '@/utils'
-import type { ForumPostDetail } from './types'
+import type { ForumPostDetail } from '@/features/vcp-forum/types'
 
 defineProps<{
   selectedPost: ForumPostDetail | null

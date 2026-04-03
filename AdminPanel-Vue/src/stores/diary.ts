@@ -1,7 +1,13 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { diaryApi } from '@/api'
 import { showMessage } from '@/utils'
+import {
+  DEFAULT_RAG_TAGS_CONFIG,
+  filterDiaryNotes,
+  getMissingCommonRagTags,
+  type RagTagsConfig,
+} from '@/stores/diary/helpers'
 
 export interface DiaryNote {
   file: string
@@ -11,28 +17,18 @@ export interface DiaryNote {
   preview?: string
 }
 
-interface RagTagsConfig {
-  thresholdEnabled: boolean
-  threshold: number
-  tags: string[]
-}
-
 export const useDiaryStore = defineStore('diary', () => {
   const folders = ref<string[]>([])
   const selectedFolder = ref('')
 
   const notes = ref<DiaryNote[]>([])
-  const filteredNotes = ref<DiaryNote[]>([])
+  const filteredNotes = computed(() => filterDiaryNotes(notes.value, searchQuery.value))
   const selectedNotes = ref<string[]>([])
   const moveTargetFolder = ref('')
   const searchQuery = ref('')
   const loadingNotes = ref(false)
 
-  const ragTagsConfig = ref<RagTagsConfig>({
-    thresholdEnabled: false,
-    threshold: 0.7,
-    tags: []
-  })
+  const ragTagsConfig = ref<RagTagsConfig>({ ...DEFAULT_RAG_TAGS_CONFIG })
 
   const ragTagsStatus = ref('')
   const ragTagsStatusType = ref<'info' | 'success' | 'error'>('info')
@@ -40,29 +36,15 @@ export const useDiaryStore = defineStore('diary', () => {
   const notesStatusType = ref<'info' | 'success' | 'error'>('info')
 
   function resetRagTagsConfig() {
-    ragTagsConfig.value = {
-      thresholdEnabled: false,
-      threshold: 0.7,
-      tags: []
-    }
-  }
-
-  function filterNotes() {
-    if (!searchQuery.value) {
-      filteredNotes.value = [...notes.value]
-      return
-    }
-
-    const query = searchQuery.value.toLowerCase()
-    filteredNotes.value = notes.value.filter((note) =>
-      note.title?.toLowerCase().includes(query) ||
-      note.file.toLowerCase().includes(query)
-    )
+    ragTagsConfig.value = { ...DEFAULT_RAG_TAGS_CONFIG }
   }
 
   function setSearchQuery(query: string) {
     searchQuery.value = query
-    filterNotes()
+  }
+
+  function filterNotes() {
+    // 兼容旧调用方：filteredNotes 已由 computed 自动更新
   }
 
   async function loadFolders() {
@@ -78,7 +60,6 @@ export const useDiaryStore = defineStore('diary', () => {
       } else {
         selectedFolder.value = ''
         notes.value = []
-        filteredNotes.value = []
         resetRagTagsConfig()
       }
     } catch (error) {
@@ -107,13 +88,11 @@ export const useDiaryStore = defineStore('diary', () => {
         modified: note.modified,
         preview: note.preview
       }))
-      filterNotes()
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       notesStatus.value = `加载日记列表失败：${errorMessage}`
       notesStatusType.value = 'error'
       notes.value = []
-      filterNotes()
     } finally {
       loadingNotes.value = false
     }
@@ -150,13 +129,7 @@ export const useDiaryStore = defineStore('diary', () => {
   }
 
   function addAllCommonTags() {
-    const commonTags = [
-      '任务闭环', '社区贡献', '逻辑共鸣', '架构讨论', '性能优化',
-      'Bug 修复', '功能请求', '用户反馈', '版本发布', '技术债务',
-      '文档更新', '测试覆盖', '代码审查', '安全加固', '用户体验'
-    ]
-    const existingTags = new Set(ragTagsConfig.value.tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean))
-    const newTags = commonTags.filter((tag) => !existingTags.has(tag.toLowerCase()))
+    const newTags = getMissingCommonRagTags(ragTagsConfig.value.tags)
 
     if (newTags.length === 0) {
       showMessage('所有常用标签已存在', 'info')

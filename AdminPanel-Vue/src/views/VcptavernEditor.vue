@@ -230,7 +230,7 @@
 </template>
 
 <script setup lang="ts">
-import { useVcptavernEditor } from "./VcptavernEditor/useVcptavernEditor";
+import { useVcptavernEditor } from "@/features/vcptavern-editor/useVcptavernEditor";
 
 const {
   presetNames,

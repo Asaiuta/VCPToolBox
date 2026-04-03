@@ -64,6 +64,54 @@ const LOG_RETRY_OPTIONS = {
   retryDelay: 500,
 } as const;
 
+const WEATHER_ICON_MAP: Record<string, string> = {
+  "100": "sunny",
+  "101": "cloudy",
+  "102": "cloudy",
+  "103": "partly_cloudy_day",
+  "104": "cloud",
+  "150": "clear_night",
+  "151": "nights_stay",
+  "152": "nights_stay",
+  "153": "nights_stay",
+  "154": "cloud",
+  "300": "rainy",
+  "301": "rainy",
+  "302": "rainy_heavy",
+  "303": "rainy_heavy",
+  "304": "rainy_heavy",
+  "305": "rainy",
+  "306": "rainy",
+  "307": "rainy_heavy",
+  "308": "rainy_heavy",
+  "309": "rainy",
+  "310": "rainy_heavy",
+  "311": "rainy_heavy",
+  "312": "rainy_heavy",
+  "313": "rainy_heavy",
+  "314": "rainy",
+  "315": "rainy_heavy",
+  "316": "rainy_heavy",
+  "317": "rainy_heavy",
+  "318": "rainy_heavy",
+  "350": "rainy",
+  "351": "rainy_heavy",
+  "399": "rainy",
+  晴: "clear_day",
+  多云: "partly_cloudy_day",
+  阴: "cloud",
+  小雨: "rainy",
+  中雨: "rainy",
+  大雨: "rainy",
+  暴雨: "thunderstorm",
+  雷阵雨: "thunderstorm",
+  雪: "snowing",
+  雾: "foggy",
+  霾: "haze",
+};
+
+const DEFAULT_WEATHER_ICON = "wb_sunny";
+
 function normalizeLogContent(content: string): string {
   return content.replace(/\r\n/g, "\n");
 }
@@ -329,7 +377,14 @@ export function useDashboardState() {
 
   async function loadNewApiMonitor() {
     try {
-      const snapshot = await newApiMonitorApi.getDashboardSnapshot({});
+      const snapshot = await newApiMonitorApi.getDashboardSnapshot(
+        {},
+        {
+          showLoader: false,
+          timeoutMs: 10000,
+          suppressErrorMessage: true,
+        }
+      );
 
       newApiMonitorSummary.value = snapshot.summary;
       newApiMonitorTrend.value = snapshot.trend;
@@ -362,53 +417,7 @@ export function useDashboardState() {
   }
 
   function mapWeatherIcon(code: string): string {
-    const iconMap: Record<string, string> = {
-      "100": "sunny",
-      "101": "cloudy",
-      "102": "cloudy",
-      "103": "partly_cloudy_day",
-      "104": "cloud",
-      "150": "clear_night",
-      "151": "nights_stay",
-      "152": "nights_stay",
-      "153": "nights_stay",
-      "154": "cloud",
-      "300": "rainy",
-      "301": "rainy",
-      "302": "rainy_heavy",
-      "303": "rainy_heavy",
-      "304": "rainy_heavy",
-      "305": "rainy",
-      "306": "rainy",
-      "307": "rainy_heavy",
-      "308": "rainy_heavy",
-      "309": "rainy",
-      "310": "rainy_heavy",
-      "311": "rainy_heavy",
-      "312": "rainy_heavy",
-      "313": "rainy_heavy",
-      "314": "rainy",
-      "315": "rainy_heavy",
-      "316": "rainy_heavy",
-      "317": "rainy_heavy",
-      "318": "rainy_heavy",
-      "350": "rainy",
-      "351": "rainy_heavy",
-      "399": "rainy",
-      晴: "clear_day",
-      多云: "partly_cloudy_day",
-      阴: "cloud",
-      小雨: "rainy",
-      中雨: "rainy",
-      大雨: "rainy",
-      暴雨: "thunderstorm",
-      雷阵雨: "thunderstorm",
-      雪: "snowing",
-      雾: "foggy",
-      霾: "haze",
-      default: "wb_sunny",
-    };
-    return iconMap[code] || iconMap.default;
+    return WEATHER_ICON_MAP[code] || DEFAULT_WEATHER_ICON;
   }
 
   function initActivityChart() {

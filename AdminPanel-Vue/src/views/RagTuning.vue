@@ -34,7 +34,7 @@
                 <div v-if="Array.isArray(value)" class="param-range-inputs">
                   <input
                     v-for="(_val, index) in value"
-                    :key="index"
+                    :key="`${String(paramKey)}-${index}`"
                     type="number"
                     step="0.001"
                     v-model.number="(groupParams[paramKey] as number[])[index]"

@@ -9,19 +9,17 @@ import {
   reorderIdsByPlacement,
   type PointerDropPlacement,
 } from '@/utils/pointerReorder'
-
-interface PreprocessorApiItem {
-  name: string
-  displayName?: string
-  description?: string
-}
+import type {
+  PreprocessorApiItem,
+  PreprocessorOrderStatusType,
+} from './types'
 
 const logger = createLogger('PreprocessorOrderManager')
 
 export function usePreprocessorOrderManager() {
   const preprocessors = ref<Preprocessor[]>([])
   const statusMessage = ref('')
-  const statusType = ref<'info' | 'success' | 'error'>('info')
+  const statusType = ref<PreprocessorOrderStatusType>('info')
   const previewOrder = ref<string[] | null>(null)
   const draggingPluginName = ref<string | null>(null)
   const dragOverPluginName = ref<string | null>(null)
@@ -32,14 +30,14 @@ export function usePreprocessorOrderManager() {
       return preprocessors.value
     }
 
-    const itemMap = new Map(preprocessors.value.map(item => [item.name, item] as const))
+    const itemMap = new Map(preprocessors.value.map((item) => [item.name, item] as const))
     return previewOrder.value
-      .map(name => itemMap.get(name))
+      .map((name) => itemMap.get(name))
       .filter((item): item is Preprocessor => item !== undefined)
   })
 
   function getCommittedOrder(): string[] {
-    return preprocessors.value.map(item => item.name)
+    return preprocessors.value.map((item) => item.name)
   }
 
   function getWorkingOrder(): string[] {
@@ -47,9 +45,9 @@ export function usePreprocessorOrderManager() {
   }
 
   function commitPreviewOrder(nextOrder: readonly string[]) {
-    const itemMap = new Map(preprocessors.value.map(item => [item.name, item] as const))
+    const itemMap = new Map(preprocessors.value.map((item) => [item.name, item] as const))
     preprocessors.value = nextOrder
-      .map(name => itemMap.get(name))
+      .map((name) => itemMap.get(name))
       .filter((item): item is Preprocessor => item !== undefined)
   }
 
@@ -98,47 +96,40 @@ export function usePreprocessorOrderManager() {
     }
   }
 
-  const {
-    dragGhost,
-    dragGhostElement,
-    startPointerDrag,
-  } = usePointerDragSession<
-    { pluginName: string },
-    { label: string; description?: string }
-  >({
-    ghostScale: 1.015,
-    createGhost: ({ pluginName }) => {
-      const activeItem =
-        preprocessors.value.find(item => item.name === pluginName) ?? null
+  const { dragGhost, dragGhostElement, startPointerDrag, handlePointerMove, handlePointerUp } =
+    usePointerDragSession<{ pluginName: string }, { label: string; description?: string }>({
+      ghostScale: 1.015,
+      createGhost: ({ pluginName }) => {
+        const activeItem = preprocessors.value.find((item) => item.name === pluginName) ?? null
 
-      if (!activeItem) {
-        return null
-      }
+        if (!activeItem) {
+          return null
+        }
 
-      return {
-        label: activeItem.displayName || activeItem.name,
-        description: activeItem.description,
-      }
-    },
-    onActivate: ({ item }) => {
-      draggingPluginName.value = item.pluginName
-      previewOrder.value = getCommittedOrder()
-    },
-    onFrame: state => {
-      updatePreviewOrder(state.currentX, state.currentY)
-    },
-    onCommit: () => {
-      if (previewOrder.value) {
-        commitPreviewOrder(previewOrder.value)
-      }
-    },
-    onClear: () => {
-      previewOrder.value = null
-      draggingPluginName.value = null
-      dragOverPluginName.value = null
-      dropPlacement.value = 'after'
-    },
-  })
+        return {
+          label: activeItem.displayName || activeItem.name,
+          description: activeItem.description,
+        }
+      },
+      onActivate: ({ item }) => {
+        draggingPluginName.value = item.pluginName
+        previewOrder.value = getCommittedOrder()
+      },
+      onFrame: (state) => {
+        updatePreviewOrder(state.currentX, state.currentY)
+      },
+      onCommit: () => {
+        if (previewOrder.value) {
+          commitPreviewOrder(previewOrder.value)
+        }
+      },
+      onClear: () => {
+        previewOrder.value = null
+        draggingPluginName.value = null
+        dragOverPluginName.value = null
+        dropPlacement.value = 'after'
+      },
+    })
 
   async function loadPreprocessors() {
     try {
@@ -197,7 +188,7 @@ export function usePreprocessorOrderManager() {
   async function saveOrder() {
     try {
       await adminConfigApi.savePreprocessorOrder(
-        preprocessors.value.map(item => item.name),
+        preprocessors.value.map((item) => item.name),
         {
           loadingKey: 'preprocessors.order.save',
         }
@@ -228,6 +219,8 @@ export function usePreprocessorOrderManager() {
     statusType,
     loadPreprocessors,
     handleDragHandlePointerDown,
+    handlePointerMove,
+    handlePointerUp,
     saveOrder,
   }
 }

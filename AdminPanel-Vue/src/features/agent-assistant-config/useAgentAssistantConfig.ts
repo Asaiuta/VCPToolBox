@@ -1,4 +1,4 @@
-import { ref, onMounted } from "vue";
+import { onMounted, ref } from "vue";
 import { agentApi, pluginApi } from "@/api";
 import { showMessage } from "@/utils";
 import { createLogger } from "@/utils/logger";
@@ -73,11 +73,7 @@ function unwrapApiPayload<T>(response: unknown): T {
   return current as T;
 }
 
-function pickString(
-  source: UnknownRecord,
-  keys: string[],
-  fallback = ""
-): string {
+function pickString(source: UnknownRecord, keys: string[], fallback = ""): string {
   for (const key of keys) {
     const value = source[key];
     if (typeof value === "string") {
@@ -87,11 +83,7 @@ function pickString(
   return fallback;
 }
 
-function pickNumber(
-  source: UnknownRecord,
-  keys: string[],
-  fallback: number
-): number {
+function pickNumber(source: UnknownRecord, keys: string[], fallback: number): number {
   for (const key of keys) {
     const value = source[key];
     const numeric =
@@ -120,11 +112,7 @@ function normalizeAgentEntry(agent: unknown): AgentConfig {
     baseName: pickString(source, ["baseName", "base", "agentBaseName"]),
     model: pickString(source, ["modelId", "model", "modelName", "model_id"]),
     personality: pickString(source, ["description", "personality", "desc"]),
-    systemPrompt: pickString(source, [
-      "systemPrompt",
-      "system_prompt",
-      "prompt",
-    ]),
+    systemPrompt: pickString(source, ["systemPrompt", "system_prompt", "prompt"]),
     maxOutputTokens: pickNumber(
       source,
       ["maxOutputTokens", "max_tokens", "maxToken", "max_output_tokens"],
@@ -202,9 +190,7 @@ function buildConfigFromEnvPairs(pairs: Map<string, string>): ConfigResponse {
       const maxOutputTokens = Number(
         pairs.get(`AGENT_${baseName}_MAX_OUTPUT_TOKENS`) || 8000
       );
-      const temperature = Number(
-        pairs.get(`AGENT_${baseName}_TEMPERATURE`) || 0.7
-      );
+      const temperature = Number(pairs.get(`AGENT_${baseName}_TEMPERATURE`) || 0.7);
 
       return {
         baseName,
@@ -272,10 +258,7 @@ function normalizeConfigPayload(payload: unknown): ConfigResponse {
 
   const source = isRecord(payload.config) ? payload.config : payload;
   const agentsSource =
-    source.agents ??
-    source.assistants ??
-    source.agentList ??
-    source.agentConfigs;
+    source.agents ?? source.assistants ?? source.agentList ?? source.agentConfigs;
 
   if (
     !Array.isArray(agentsSource) &&
@@ -354,11 +337,7 @@ function normalizeConfigPayload(payload: unknown): ConfigResponse {
             ["maxOutputTokens", "max_tokens", "maxToken", "max_output_tokens"],
             8000
           ),
-          temperature: pickNumber(
-            isRecord(item) ? item : {},
-            ["temperature", "temp"],
-            0.7
-          ),
+          temperature: pickNumber(isRecord(item) ? item : {}, ["temperature", "temp"], 0.7),
         }))
       : [],
   };
@@ -425,10 +404,7 @@ async function loadConfigFromPluginsEndpoint(): Promise<ConfigResponse | null> {
     const envContent =
       pickString(agentAssistantPlugin, ["configEnvContent", "content"]) ||
       (isRecord(agentAssistantPlugin.manifest)
-        ? pickString(agentAssistantPlugin.manifest, [
-            "configEnvContent",
-            "content",
-          ])
+        ? pickString(agentAssistantPlugin.manifest, ["configEnvContent", "content"])
         : "");
 
     if (!envContent) {
@@ -506,15 +482,16 @@ export function useAgentAssistantConfig() {
 
       availableAgents.value = normalizeAgentMap(agentMapResponse);
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       logger.error("Failed to load config:", errorMessage);
       showMessage(`加载配置失败：${errorMessage}`, "error");
     }
   }
 
   function addFromExisting() {
-    if (!selectedExistingAgent.value) return;
+    if (!selectedExistingAgent.value) {
+      return;
+    }
 
     const baseName = selectedExistingAgent.value;
     agents.value.push({
@@ -560,10 +537,7 @@ export function useAgentAssistantConfig() {
           return;
         }
         if (!agent.model.trim()) {
-          showMessage(
-            `助手 "${agent.name}" 未填写模型 ID，请补充后再保存。`,
-            "error"
-          );
+          showMessage(`助手 "${agent.name}" 未填写模型 ID，请补充后再保存。`, "error");
           return;
         }
       }
@@ -593,8 +567,7 @@ export function useAgentAssistantConfig() {
       statusType.value = "success";
       showMessage("AgentAssistant 配置已保存！", "success");
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       statusMessage.value = `保存失败：${errorMessage}`;
       statusType.value = "error";
       showMessage(`保存失败：${errorMessage}`, "error");

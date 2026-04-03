@@ -140,7 +140,7 @@ export function useThinkingChainsEditor() {
       const chainsObj: Record<string, { clusters: string[]; kSequence: number[] }> = {}
       const seenThemes = new Set<string>()
 
-      thinkingChains.value.forEach(chain => {
+      thinkingChains.value.forEach((chain) => {
         const normalizedTheme = chain.theme.trim()
         if (!normalizedTheme) {
           throw new Error('主题名称不能为空')
@@ -245,10 +245,7 @@ export function useThinkingChainsEditor() {
     }
   }
 
-  function hasPreviewChanged(
-    base: ChainPreviewState,
-    next: ChainPreviewState
-  ): boolean {
+  function hasPreviewChanged(base: ChainPreviewState, next: ChainPreviewState): boolean {
     if (base.clusters.length !== next.clusters.length) {
       return true
     }
@@ -258,10 +255,7 @@ export function useThinkingChainsEditor() {
     }
 
     return base.clusters.some((cluster, index) => {
-      return (
-        cluster !== next.clusters[index] ||
-        base.kSequence[index] !== next.kSequence[index]
-      )
+      return cluster !== next.clusters[index] || base.kSequence[index] !== next.kSequence[index]
     })
   }
 
@@ -283,7 +277,7 @@ export function useThinkingChainsEditor() {
       }
     })
 
-    return clusterOrder.map(cluster => kValueByCluster.get(cluster) ?? 1)
+    return clusterOrder.map((cluster) => kValueByCluster.get(cluster) ?? 1)
   }
 
   function getRenderedClusters(chainIndex: number): string[] {
@@ -311,11 +305,7 @@ export function useThinkingChainsEditor() {
     return actualIndex >= 0 ? chain.kSequence[actualIndex] ?? 1 : 1
   }
 
-  function updateClusterKValue(
-    chainIndex: number,
-    clusterName: string,
-    rawValue: string
-  ) {
+  function updateClusterKValue(chainIndex: number, clusterName: string, rawValue: string) {
     const normalizedValue = clampKValue(rawValue)
     const chain = thinkingChains.value[chainIndex]
     if (!chain) {
@@ -335,10 +325,7 @@ export function useThinkingChainsEditor() {
     }
   }
 
-  function getChainDropTarget(
-    clientX: number,
-    clientY: number
-  ): ChainDropTarget | null {
+  function getChainDropTarget(clientX: number, clientY: number): ChainDropTarget | null {
     if (typeof document === 'undefined') {
       return null
     }
@@ -402,19 +389,13 @@ export function useThinkingChainsEditor() {
     const seenClusters = new Set<string>()
     const targets: ChainListItemTarget[] = []
 
-    for (const result of Array.from(
-      listElement.querySelectorAll('[data-chain-item="true"]')
-    )) {
+    for (const result of Array.from(listElement.querySelectorAll('[data-chain-item="true"]'))) {
       if (!(result instanceof HTMLElement)) {
         continue
       }
 
       const clusterName = result.dataset.clusterName ?? ''
-      if (
-        !clusterName ||
-        seenClusters.has(clusterName) ||
-        !renderedClusters.includes(clusterName)
-      ) {
+      if (!clusterName || seenClusters.has(clusterName) || !renderedClusters.includes(clusterName)) {
         continue
       }
 
@@ -450,28 +431,19 @@ export function useThinkingChainsEditor() {
       }
 
       const nextClusters =
-        target.targetClusterName &&
-        target.targetClusterName !== activeState.item.clusterName
+        target.targetClusterName && target.targetClusterName !== activeState.item.clusterName
           ? reorderIdsByPlacement(
               basePreview.clusters,
               activeState.item.clusterName,
               target.targetClusterName,
               target.placement
             )
-          : reorderByDragIndex(
-              basePreview.clusters,
-              currentIndex,
-              target.insertionIndex
-            ).items
+          : reorderByDragIndex(basePreview.clusters, currentIndex, target.insertionIndex).items
 
       const nextPreview = {
         chainIndex: target.chainIndex,
         clusters: nextClusters,
-        kSequence: buildKSequenceForClusters(
-          target.chainIndex,
-          nextClusters,
-          basePreview
-        ),
+        kSequence: buildKSequenceForClusters(target.chainIndex, nextClusters, basePreview),
       }
 
       return hasPreviewChanged(basePreview, nextPreview) ? nextPreview : null
@@ -483,37 +455,26 @@ export function useThinkingChainsEditor() {
     }
 
     const nextClusters = basePreview.clusters.filter(
-      cluster => cluster !== activeState.item.clusterName
+      (cluster) => cluster !== activeState.item.clusterName
     )
 
-    if (
-      target.targetClusterName &&
-      target.targetClusterName !== activeState.item.clusterName
-    ) {
+    if (target.targetClusterName && target.targetClusterName !== activeState.item.clusterName) {
       const targetIndex = nextClusters.indexOf(target.targetClusterName)
       if (targetIndex >= 0) {
-        const insertIndex =
-          target.placement === 'before' ? targetIndex : targetIndex + 1
+        const insertIndex = target.placement === 'before' ? targetIndex : targetIndex + 1
         nextClusters.splice(insertIndex, 0, activeState.item.clusterName)
       } else {
         nextClusters.push(activeState.item.clusterName)
       }
     } else {
-      const safeInsertionIndex = Math.max(
-        0,
-        Math.min(target.insertionIndex, nextClusters.length)
-      )
+      const safeInsertionIndex = Math.max(0, Math.min(target.insertionIndex, nextClusters.length))
       nextClusters.splice(safeInsertionIndex, 0, activeState.item.clusterName)
     }
 
     const nextPreview = {
       chainIndex: target.chainIndex,
       clusters: nextClusters,
-      kSequence: buildKSequenceForClusters(
-        target.chainIndex,
-        nextClusters,
-        basePreview
-      ),
+      kSequence: buildKSequenceForClusters(target.chainIndex, nextClusters, basePreview),
     }
 
     return hasPreviewChanged(basePreview, nextPreview) ? nextPreview : null
@@ -543,13 +504,11 @@ export function useThinkingChainsEditor() {
     chainPreview.value = preview
   }
 
-  const {
-    pointerState,
-    dragGhost,
-    dragGhostElement,
-    startPointerDrag,
-  } = usePointerDragSession<DraggedItem, { label: string; meta: string }>({
-    createGhost: item =>
+  const { pointerState, dragGhost, dragGhostElement, startPointerDrag } = usePointerDragSession<
+    DraggedItem,
+    { label: string; meta: string }
+  >({
+    createGhost: (item) =>
       item.type === 'chain'
         ? {
             label: item.clusterName,
@@ -559,7 +518,7 @@ export function useThinkingChainsEditor() {
             label: item.clusterName,
             meta: '可用思维簇',
           },
-    onFrame: state => {
+    onFrame: (state) => {
       updatePreviewState(state.currentX, state.currentY)
     },
     onCommit: () => {
@@ -580,11 +539,7 @@ export function useThinkingChainsEditor() {
   })
   const isPreviewDragging = computed(() => pointerState.value?.dragging === true)
 
-  function startChainPointerDrag(
-    chainIndex: number,
-    clusterIndex: number,
-    event: PointerEvent
-  ) {
+  function startChainPointerDrag(chainIndex: number, clusterIndex: number, event: PointerEvent) {
     const currentTarget = event.currentTarget
     if (!(currentTarget instanceof HTMLElement)) {
       return

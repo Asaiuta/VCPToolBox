@@ -22,8 +22,8 @@
 
     <nav v-show="!isRecentVisitsCollapsed && !isSidebarCollapsed || isHoveringSidebar" class="recent-nav">
       <a
-        v-for="(item, index) in recentVisits"
-        :key="index"
+        v-for="item in recentVisits"
+        :key="`${item.target}-${item.pluginName || ''}`"
         href="#"
         class="recent-item"
         :class="{ 'sidebar-collapsed': isSidebarCollapsed && !isHoveringSidebar }"

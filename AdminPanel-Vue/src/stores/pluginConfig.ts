@@ -93,6 +93,18 @@ export const usePluginConfigStore = defineStore('plugin-config', () => {
   const hasCustomFields = computed(() => configEntries.value.some((entry) => !entry.isCommentOrEmpty && !!entry.key && !isKeyInSchema(entry.key)))
   const invocationCommands = computed(() => pluginData.value?.manifest.capabilities?.invocationCommands || [])
 
+  function clearTransientUiState() {
+    Object.keys(sensitiveFields).forEach((key) => {
+      delete sensitiveFields[key]
+    })
+    Object.keys(commandDescriptions).forEach((key) => {
+      delete commandDescriptions[key]
+    })
+    Object.keys(commandStatuses).forEach((key) => {
+      delete commandStatuses[key]
+    })
+  }
+
   function isSensitiveKey(key: string): boolean {
     return /key|api|secret|password|token/i.test(key)
   }
@@ -181,8 +193,15 @@ export const usePluginConfigStore = defineStore('plugin-config', () => {
   }
 
   async function loadPluginConfig(pluginName: string) {
+    clearTransientUiState()
+    pluginData.value = null
+    configEntries.value = []
+
     try {
-      const plugins = await pluginApi.getPlugins(false)
+      const plugins = appStore.pluginsLoaded
+        ? appStore.plugins
+        : await pluginApi.getPlugins(false)
+
       appStore.loadPlugins(plugins)
       const plugin = plugins.find((item) => item.manifest.name === pluginName || item.name === pluginName)
 
@@ -206,13 +225,6 @@ export const usePluginConfigStore = defineStore('plugin-config', () => {
           type: inferredType,
           value: entry.isCommentOrEmpty || !entry.key ? entry.value : castByType(entry.value, inferredType)
         }
-      })
-
-      Object.keys(commandDescriptions).forEach((key) => {
-        delete commandDescriptions[key]
-      })
-      Object.keys(commandStatuses).forEach((key) => {
-        delete commandStatuses[key]
       })
 
       invocationCommands.value.forEach((cmd) => {

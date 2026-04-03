@@ -84,6 +84,7 @@
             <div
               v-for="line in visibleLines"
               :key="line.index"
+              v-memo="[line.item.content, filterText]"
               class="log-line"
               :class="getLineClass(line.item.content)"
             >
@@ -119,7 +120,7 @@
 </template>
 
 <script setup lang="ts">
-import { useServerLogViewer } from "./ServerLogViewer/useServerLogViewer";
+import { useServerLogViewer } from "@/features/server-log-viewer/useServerLogViewer";
 
 const {
   logPath,

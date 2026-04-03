@@ -1,5 +1,5 @@
 import { apiFetch, type ApiFetchUiOptions } from "@/utils/api";
-import type { Tool } from "@/views/ToolListEditor/types";
+import type { Tool } from "@/features/tool-list/types";
 
 type ApiUiOptions = boolean | ApiFetchUiOptions;
 

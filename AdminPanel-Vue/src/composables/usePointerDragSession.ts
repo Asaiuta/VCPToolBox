@@ -272,6 +272,9 @@ export function usePointerDragSession<TItem, TGhost>(
     dragGhost,
     dragGhostElement,
     startPointerDrag,
+    handlePointerMove: handleGlobalPointerMove,
+    handlePointerUp: handleGlobalPointerUp,
+    handlePointerCancel: handleGlobalPointerCancel,
     clearInteractionState,
     finishInteraction,
   }

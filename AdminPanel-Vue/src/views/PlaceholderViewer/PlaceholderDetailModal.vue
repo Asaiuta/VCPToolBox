@@ -76,7 +76,10 @@
 
 <script setup lang="ts">
 import { nextTick, ref, watch } from "vue";
-import type { Placeholder, PlaceholderDetailTab } from "./types";
+import type {
+  Placeholder,
+  PlaceholderDetailTab,
+} from "@/features/placeholder-viewer/types";
 
 const props = defineProps<{
   selectedPlaceholder: Placeholder | null;

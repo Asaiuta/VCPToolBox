@@ -2,7 +2,7 @@
   <nav id="plugin-nav" ref="navRef" @scroll="handleNavScroll">
     <div v-if="shouldVirtualize" :style="{ height: `${totalHeight}px`, position: 'relative' }">
       <ul :style="{ transform: `translateY(${offsetY}px)` }">
-      <template v-for="(item, index) in filteredNavItems" :key="index">
+      <template v-for="item in filteredNavItems" :key="item.category ? `category-${item.category}` : `nav-${item.target || item.pluginName || item.label}`">
         <li v-if="item.category" class="nav-category" :class="{ 'fade-label-hidden': !isExpandedState }">
           {{ item.category }}
         </li>
@@ -30,7 +30,7 @@
       </ul>
     </div>
     <ul v-else>
-      <template v-for="(item, index) in filteredNavItems" :key="index">
+      <template v-for="item in filteredNavItems" :key="item.category ? `category-${item.category}` : `nav-${item.target || item.pluginName || item.label}`">
         <li v-if="item.category" class="nav-category" :class="{ 'fade-label-hidden': !isExpandedState }">
           {{ item.category }}
         </li>

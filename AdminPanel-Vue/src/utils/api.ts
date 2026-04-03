@@ -2,12 +2,12 @@
  * API 请求工具
  */
 import { getActivePinia } from "pinia";
+import { notifyAuthExpired } from "@/platform/auth/session";
+import { feedbackBus } from "@/platform/feedback/feedbackBus";
 import { useLoadingStore } from "@/stores/loading";
 import { createAppError, type AppError } from "@/types/api";
-import { redirectToLogin } from "./auth";
 import { createLogger } from "./logger";
 import { performanceMonitor } from "./performance";
-import { showLoading, showMessage } from "./ui";
 
 export interface RetryOptions {
   maxRetries?: number;
@@ -20,6 +20,7 @@ export interface ApiFetchUiOptions {
   showLoader?: boolean;
   loadingKey?: string;
   timeoutMs?: number;
+  suppressErrorMessage?: boolean;
 }
 
 const DEFAULT_RETRY_OPTIONS: Required<RetryOptions> = {
@@ -157,12 +158,13 @@ function readResponseBody(response: Response): Promise<unknown> {
 function normalizeUiOptions(
   uiOptions: boolean | ApiFetchUiOptions
 ): Required<Pick<ApiFetchUiOptions, "showLoader" | "timeoutMs">> &
-  Pick<ApiFetchUiOptions, "loadingKey"> {
+  Pick<ApiFetchUiOptions, "loadingKey" | "suppressErrorMessage"> {
   if (typeof uiOptions === "boolean") {
     return {
       showLoader: uiOptions,
       loadingKey: undefined,
       timeoutMs: DEFAULT_API_TIMEOUT_MS,
+      suppressErrorMessage: false,
     };
   }
 
@@ -170,6 +172,7 @@ function normalizeUiOptions(
     showLoader: uiOptions.showLoader ?? true,
     loadingKey: uiOptions.loadingKey,
     timeoutMs: uiOptions.timeoutMs ?? DEFAULT_API_TIMEOUT_MS,
+    suppressErrorMessage: uiOptions.suppressErrorMessage ?? false,
   };
 }
 
@@ -248,7 +251,7 @@ export async function apiFetch<T = unknown>(
     pinia && normalizedUiOptions.loadingKey ? useLoadingStore(pinia) : null;
 
   if (normalizedUiOptions.showLoader) {
-    showLoading(true);
+    feedbackBus.showLoading(true);
   }
   if (loadingStore && normalizedUiOptions.loadingKey) {
     loadingStore.start(normalizedUiOptions.loadingKey);
@@ -279,10 +282,11 @@ export async function apiFetch<T = unknown>(
 
     if (!response.ok) {
       if (response.status === 401) {
-        if (!window.location.pathname.includes("/login")) {
-          logger.warn("401 Unauthorized, redirecting to login...");
-          redirectToLogin();
-        }
+        logger.warn("401 Unauthorized, forwarding auth-expired event");
+        notifyAuthExpired({
+          source: "apiFetch",
+          requestUrl: url,
+        });
         throw createAppError("Unauthorized", { code: "AUTH_REQUIRED", status: 401 });
       }
 
@@ -329,10 +333,14 @@ export async function apiFetch<T = unknown>(
         error.message.includes("NetworkError")
       ) {
         logger.error("API Fetch Error: 网络连接失败", error);
-        showMessage("网络连接失败，请检查网络或服务状态", "error");
+        if (!normalizedUiOptions.suppressErrorMessage) {
+          feedbackBus.showMessage("网络连接失败，请检查网络或服务状态", "error");
+        }
       } else {
         logger.error("API Fetch Error:", errorMessage, error);
-        showMessage(`请求失败：${errorMessage}`, "error");
+        if (!normalizedUiOptions.suppressErrorMessage) {
+          feedbackBus.showMessage(`请求失败：${errorMessage}`, "error");
+        }
       }
     } else if (
       error instanceof Error &&
@@ -341,13 +349,15 @@ export async function apiFetch<T = unknown>(
       logger.error("API Fetch Error: 认证失败", error);
     } else {
       logger.error("API Fetch Error:", errorMessage, error);
-      showMessage(`操作失败：${errorMessage}`, "error");
+      if (!normalizedUiOptions.suppressErrorMessage) {
+        feedbackBus.showMessage(`操作失败：${errorMessage}`, "error");
+      }
     }
 
     throw error;
   } finally {
     if (normalizedUiOptions.showLoader) {
-      showLoading(false);
+      feedbackBus.showLoading(false);
     }
     if (loadingStore && normalizedUiOptions.loadingKey) {
       loadingStore.stop(normalizedUiOptions.loadingKey);

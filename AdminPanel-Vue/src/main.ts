@@ -2,6 +2,11 @@ import { createApp } from "vue";
 import { createPinia } from "pinia";
 import "@fontsource/material-symbols-outlined/400.css";
 import App from "./App.vue";
+import { setAuthExpiredListener } from "@/platform/auth/session";
+import { feedbackSink } from "@/platform/feedback/feedbackState";
+import { setFeedbackSink } from "@/platform/feedback/feedbackBus";
+import { getAppRoutePath } from "@/app/routes/manifest";
+import { useAuthStore } from "@/stores/auth";
 import router from "./router";
 import "./style/index.css";
 
@@ -10,6 +15,31 @@ import lazyDirective from "./directives/lazy";
 
 const app = createApp(App);
 const pinia = createPinia();
+const authStore = useAuthStore(pinia);
+
+setFeedbackSink(feedbackSink);
+setAuthExpiredListener(() => {
+	authStore.logout();
+
+	const currentRoute = router.currentRoute.value;
+	if (currentRoute.name === "Login") {
+		return;
+	}
+
+	const redirectTarget =
+		typeof currentRoute.fullPath === "string" && currentRoute.fullPath.startsWith("/")
+			? currentRoute.fullPath
+			: getAppRoutePath("dashboard");
+
+	void router
+		.replace({
+			name: "Login",
+			query: {
+				redirect: redirectTarget,
+			},
+		})
+		.catch(() => undefined);
+});
 
 // 注册全局指令
 app.directive("lazy", lazyDirective);

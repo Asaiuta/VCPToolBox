@@ -1,5 +1,5 @@
 import { apiFetch, type ApiFetchUiOptions } from '@/utils/api'
-import type { Placeholder } from '@/views/PlaceholderViewer/types'
+import type { Placeholder } from '@/features/placeholder-viewer/types'
 
 type ApiUiOptions = boolean | ApiFetchUiOptions
 

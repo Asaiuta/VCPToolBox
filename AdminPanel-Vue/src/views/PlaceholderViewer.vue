@@ -114,7 +114,7 @@
 import { onMounted } from "vue";
 import PlaceholderFilterBar from "./PlaceholderViewer/PlaceholderFilterBar.vue";
 import PlaceholderDetailModal from "./PlaceholderViewer/PlaceholderDetailModal.vue";
-import { usePlaceholderViewer } from "./PlaceholderViewer/usePlaceholderViewer";
+import { usePlaceholderViewer } from "@/features/placeholder-viewer/usePlaceholderViewer";
 
 const {
   viewMode,

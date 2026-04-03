@@ -71,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePreprocessorOrderManager } from "./PreprocessorOrderManager/usePreprocessorOrderManager";
+import { usePreprocessorOrderManager } from "@/features/preprocessor-order-manager/usePreprocessorOrderManager";
 
 const {
   orderedPreprocessors,

@@ -1,6 +1,6 @@
 <template>
   <section id="base-config-section" class="config-section active-section">    <form id="base-config-form" @submit.prevent="handleSubmit">
-      <div v-for="(entry, index) in configEntries" :key="index">
+      <div v-for="entry in configEntries" :key="entry.uid">
         <!-- 注释或空行 -->
         <div v-if="entry.isCommentOrEmpty" class="form-group-comment">
           <pre>{{ entry.value }}</pre>
@@ -74,6 +74,7 @@ import { adminConfigApi } from '@/api'
 import { showMessage, parseEnvToList, serializeEnvAssignment, type EnvEntry } from '@/utils'
 
 interface ConfigEntry extends EnvEntry {
+  uid: string
   type: 'string' | 'boolean' | 'integer'
 }
 
@@ -98,8 +99,9 @@ async function loadConfig() {
     })
     const entries = parseEnvToList(content)
 
-    configEntries.value = entries.map(entry => ({
+    configEntries.value = entries.map((entry, index) => ({
       ...entry,
+      uid: `${entry.key ?? 'line'}-${String(entry.value)}-${index}`,
       type: entry.isCommentOrEmpty ? 'string' : inferType(entry.key, entry.value)
     }))
   } catch (error) {

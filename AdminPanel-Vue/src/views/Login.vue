@@ -75,8 +75,8 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { resolveSafeAppRedirect } from "@/app/routes/redirect";
 import { useAuthStore } from "@/stores/auth";
-import { ROUTES } from "@/constants/routes";
 
 const router = useRouter();
 const route = useRoute();
@@ -96,19 +96,6 @@ function onImageError(e: Event) {
 
 function togglePassword() {
   showPassword.value = !showPassword.value;
-}
-
-function resolveSafeRedirect(target: unknown): string {
-  if (typeof target !== "string" || !target.startsWith("/")) {
-    return ROUTES.DASHBOARD;
-  }
-
-  const resolved = router.resolve(target);
-  if (!resolved.matched.length || resolved.name === "Login") {
-    return ROUTES.DASHBOARD;
-  }
-
-  return resolved.fullPath;
 }
 
 async function handleLogin() {
@@ -132,7 +119,7 @@ async function handleLogin() {
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       // 优先回跳到登录前目标页（无效 redirect 自动回退到仪表盘）
-      const redirect = resolveSafeRedirect(route.query.redirect);
+      const redirect = resolveSafeAppRedirect(router, route.query.redirect);
       router.push(redirect);
     } else {
       message.value = result.message || "用户名或密码错误";

@@ -1,6 +1,6 @@
 <template>
   <div class="vcp-animation-container">
-    <div class="vcp-logo-container">
+    <div v-once class="vcp-logo-container">
       <img
         src="/VCPLogo2.png"
         alt="VCPToolBox Logo"
@@ -37,6 +37,81 @@ interface Particle {
 }
 
 let particles: Particle[] = [];
+
+const CONNECTION_DISTANCE = 100;
+const GRID_CELL_SIZE = CONNECTION_DISTANCE;
+const NEIGHBOR_OFFSETS: Array<[number, number]> = [
+  [0, 0],
+  [1, 0],
+  [0, 1],
+  [1, 1],
+  [-1, 1],
+];
+
+function drawParticleConnections(ctx: CanvasRenderingContext2D): void {
+  if (particles.length <= 1) {
+    return;
+  }
+
+  const distanceSquaredLimit = CONNECTION_DISTANCE * CONNECTION_DISTANCE;
+  const grid = new Map<string, number[]>();
+
+  particles.forEach((particle, index) => {
+    const cellX = Math.floor(particle.x / GRID_CELL_SIZE);
+    const cellY = Math.floor(particle.y / GRID_CELL_SIZE);
+    const key = `${cellX},${cellY}`;
+    const bucket = grid.get(key);
+    if (bucket) {
+      bucket.push(index);
+      return;
+    }
+    grid.set(key, [index]);
+  });
+
+  for (const [cellKey, bucket] of grid.entries()) {
+    const [baseXText, baseYText] = cellKey.split(",");
+    const baseX = Number.parseInt(baseXText, 10);
+    const baseY = Number.parseInt(baseYText, 10);
+
+    for (const [offsetX, offsetY] of NEIGHBOR_OFFSETS) {
+      const neighbor = grid.get(`${baseX + offsetX},${baseY + offsetY}`);
+      if (!neighbor) {
+        continue;
+      }
+
+      for (const i of bucket) {
+        for (const j of neighbor) {
+          if (i >= j) {
+            continue;
+          }
+
+          const from = particles[i];
+          const to = particles[j];
+          const dx = from.x - to.x;
+          const dy = from.y - to.y;
+          const distanceSquared = dx * dx + dy * dy;
+
+          if (distanceSquared >= distanceSquaredLimit) {
+            continue;
+          }
+
+          const distance = Math.sqrt(distanceSquared);
+          const alpha = 0.1 * (1 - distance / CONNECTION_DISTANCE);
+
+          ctx.beginPath();
+          ctx.moveTo(from.x, from.y);
+          ctx.lineTo(to.x, to.y);
+          ctx.strokeStyle =
+            theme.value === "dark"
+              ? `rgba(56, 189, 248, ${alpha})`
+              : `rgba(2, 132, 199, ${alpha})`;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+  }
+}
 
 function stopAnimationLoop() {
   isAnimating = false;
@@ -139,26 +214,7 @@ function animate() {
     ctx.fill();
   });
 
-  // 绘制连接线
-  for (let i = 0; i < particles.length; i++) {
-    for (let j = i + 1; j < particles.length; j++) {
-      const dx = particles[i].x - particles[j].x;
-      const dy = particles[i].y - particles[j].y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      if (distance < 100) {
-        ctx.beginPath();
-        ctx.moveTo(particles[i].x, particles[i].y);
-        ctx.lineTo(particles[j].x, particles[j].y);
-        ctx.strokeStyle =
-          theme.value === "dark"
-            ? `rgba(56, 189, 248, ${0.1 * (1 - distance / 100)})`
-            : `rgba(2, 132, 199, ${0.1 * (1 - distance / 100)})`;
-        ctx.lineWidth = 0.5;
-        ctx.stroke();
-      }
-    }
-  }
+  drawParticleConnections(ctx);
 
   animationFrameId = requestAnimationFrame(animate);
 }

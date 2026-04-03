@@ -1,5 +1,6 @@
 import type { Router } from 'vue-router'
-import { ROUTES } from '@/constants/routes'
+import { APP_ROUTER_BASE } from '@/app/routes/base'
+import { getAppRoutePath } from '@/app/routes/manifest'
 import { createLogger } from './logger'
 
 const logger = createLogger('Auth')
@@ -11,7 +12,7 @@ export function redirectToLogin(router?: Router): void {
   }
 
   if (typeof window !== 'undefined') {
-    window.location.href = `${ROUTES.BASE}${ROUTES.LOGIN}`
+    window.location.href = `${APP_ROUTER_BASE}${getAppRoutePath('login')}`
   }
 }
 

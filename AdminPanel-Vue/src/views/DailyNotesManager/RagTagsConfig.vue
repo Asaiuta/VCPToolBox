@@ -61,7 +61,7 @@
         </div>
         <div
           v-for="(tag, index) in ragTagsConfig.tags"
-          :key="index"
+          :key="`${tag}-${index}`"
           class="tag-item"
         >
           <span class="tag-index">{{ index + 1 }}</span>

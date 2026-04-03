@@ -87,7 +87,7 @@ import { onMounted } from "vue";
 import ForumFilterBar from "./VcpForum/ForumFilterBar.vue";
 import ForumPostList from "./VcpForum/ForumPostList.vue";
 import ForumPostDetail from "./VcpForum/ForumPostDetail.vue";
-import { useVcpForum } from "./VcpForum/useVcpForum";
+import { useVcpForum } from "@/features/vcp-forum/useVcpForum";
 
 const {
   boards,

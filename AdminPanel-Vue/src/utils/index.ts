@@ -3,8 +3,7 @@
  */
 
 // UI 工具
-export { showLoading } from "./ui";
-export { showMessage } from "./ui";
+export { showLoading, showMessage } from "@/platform/feedback/feedbackBus";
 
 // API 工具
 export { apiFetch } from "./api";

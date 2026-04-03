@@ -27,7 +27,7 @@
 
       <template #left-content>
         <div class="toolbox-map-list">
-          <div v-for="(entry, index) in toolboxMap" :key="index" class="toolbox-map-entry card">
+          <div v-for="(entry, index) in toolboxMap" :key="entry.alias || entry.file || `toolbox-${index}`" class="toolbox-map-entry card">
             <div class="toolbox-entry-row">
               <label>别名 (Alias):</label>
               <input

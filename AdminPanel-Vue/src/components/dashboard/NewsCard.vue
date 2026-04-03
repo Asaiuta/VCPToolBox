@@ -31,19 +31,19 @@
         </div>
         <template v-else>
           <component
-            :is="item.url ? 'a' : 'div'"
-            v-for="(item, index) in duplicatedFilteredItems"
-            :key="getStableKey(item, index)"
-            :href="item.url || undefined"
-            :target="item.url ? '_blank' : undefined"
-            :rel="item.url ? 'noopener noreferrer' : undefined"
+            :is="entry.item.url ? 'a' : 'div'"
+            v-for="entry in duplicatedFilteredItems"
+            :key="`${getStableItemId(entry.item)}-${entry.cycle}`"
+            :href="entry.item.url || undefined"
+            :target="entry.item.url ? '_blank' : undefined"
+            :rel="entry.item.url ? 'noopener noreferrer' : undefined"
             class="dashboard-card-panel news-item"
-            :class="{ 'news-item-disabled': !item.url }"
-            :role="item.url ? undefined : 'note'"
-            :aria-label="item.url ? undefined : '该新闻链接不可用'"
+            :class="{ 'news-item-disabled': !entry.item.url }"
+            :role="entry.item.url ? undefined : 'note'"
+            :aria-label="entry.item.url ? undefined : '该新闻链接不可用'"
           >
-            <span class="news-source">{{ item.source }}</span>
-            <span class="news-title">{{ item.title }}</span>
+            <span class="news-source">{{ entry.item.source }}</span>
+            <span class="news-title">{{ entry.item.title }}</span>
           </component>
         </template>
       </div>
@@ -82,19 +82,21 @@ const filteredItems = computed(() => {
 });
 
 // 用于无限滚动的重复列表
-const duplicatedFilteredItems = computed(() => [...filteredItems.value, ...filteredItems.value]);
+const duplicatedFilteredItems = computed(() => [
+  ...filteredItems.value.map((item) => ({ item, cycle: 0 as const })),
+  ...filteredItems.value.map((item) => ({ item, cycle: 1 as const })),
+]);
 
 // 加快滚动速度：从 4s 改为 2s
 const animationDuration = computed(() => `${Math.max(filteredItems.value.length, 1) * 2}s`);
 
 // 生成稳定的 key，使用 URL 的 hash 作为唯一标识
-function getStableKey(item: NewsItem, index: number): string {
+function getStableItemId(item: NewsItem): string {
   if (item.url) {
-    // 使用 URL 作为稳定 key
     return `url-${item.url}`;
   }
-  // 对于无 URL 的项，使用标题 hash + index
-  return `note-${index}-${item.title.slice(0, 10)}`;
+
+  return `note-${item.source}-${item.title.slice(0, 20)}`;
 }
 </script>
 

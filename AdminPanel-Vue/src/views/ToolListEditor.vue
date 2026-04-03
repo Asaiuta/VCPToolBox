@@ -41,7 +41,7 @@
 import { onMounted } from "vue";
 import ToolSelectionPanel from "./ToolListEditor/ToolSelectionPanel.vue";
 import ToolConfigPreviewPanel from "./ToolListEditor/ToolConfigPreviewPanel.vue";
-import { useToolListEditor } from "./ToolListEditor/useToolListEditor";
+import { useToolListEditor } from "@/features/tool-list/useToolListEditor";
 
 const {
   loading,

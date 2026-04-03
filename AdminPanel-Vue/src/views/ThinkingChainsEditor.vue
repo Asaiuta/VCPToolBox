@@ -174,7 +174,7 @@
 </template>
 
 <script setup lang="ts">
-import { useThinkingChainsEditor } from "./ThinkingChainsEditor/useThinkingChainsEditor";
+import { useThinkingChainsEditor } from "@/features/thinking-chains-editor/useThinkingChainsEditor";
 
 const {
   thinkingChains,

@@ -29,7 +29,7 @@
 
         <div v-if="hasSchemaFields" class="schema-fields-section">
           <h3>Schema 定义的配置</h3>
-          <div v-for="(entry, index) in schemaEntries" :key="`schema-${index}`" class="form-group">
+          <div v-for="(entry, index) in schemaEntries" :key="entry.key || `schema-${index}`" class="form-group">
             <label :for="`plugin-${entry.key}`">
               <span class="key-name">{{ entry.key }}</span>
             </label>
@@ -96,7 +96,7 @@
 
         <div v-if="hasCustomFields || hasCommentEntries" class="custom-fields-section">
           <h3>自定义 .env 配置项 (及注释/空行)</h3>
-          <div v-for="(entry, index) in customEntries" :key="`custom-${index}`" class="form-group">
+          <div v-for="(entry, index) in customEntries" :key="entry.key || `custom-${index}`" class="form-group">
             <div v-if="entry.isCommentOrEmpty" class="form-group-comment">
               <pre>{{ entry.value }}</pre>
             </div>
@@ -173,7 +173,7 @@
           <h3>调用命令 AI 指令编辑</h3>
           <div
             v-for="(cmd, index) in invocationCommands"
-            :key="`cmd-${index}-${getCommandIdentifier(cmd)}`"
+            :key="`cmd-${getCommandIdentifier(cmd) || index}`"
             class="command-item"
           >
             <h4>命令: {{ getCommandIdentifier(cmd) }}</h4>

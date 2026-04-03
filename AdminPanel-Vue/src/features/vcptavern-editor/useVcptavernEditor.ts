@@ -48,14 +48,14 @@ export function useVcptavernEditor() {
       return editorState.rules
     }
 
-    const itemMap = new Map(editorState.rules.map(rule => [rule.id, rule] as const))
+    const itemMap = new Map(editorState.rules.map((rule) => [rule.id, rule] as const))
     return previewOrder.value
-      .map(id => itemMap.get(id))
+      .map((id) => itemMap.get(id))
       .filter((rule): rule is TavernRule => rule !== undefined)
   })
 
   function getCommittedOrder(): string[] {
-    return editorState.rules.map(rule => rule.id)
+    return editorState.rules.map((rule) => rule.id)
   }
 
   function getWorkingOrder(): string[] {
@@ -63,9 +63,9 @@ export function useVcptavernEditor() {
   }
 
   function commitPreviewOrder(nextOrder: readonly string[]) {
-    const itemMap = new Map(editorState.rules.map(rule => [rule.id, rule] as const))
+    const itemMap = new Map(editorState.rules.map((rule) => [rule.id, rule] as const))
     editorState.rules = nextOrder
-      .map(id => itemMap.get(id))
+      .map((id) => itemMap.get(id))
       .filter((rule): rule is TavernRule => rule !== undefined)
   }
 
@@ -145,44 +145,38 @@ export function useVcptavernEditor() {
     }
   }
 
-  const {
-    dragGhost,
-    dragGhostElement,
-    startPointerDrag,
-  } = usePointerDragSession<
-    { ruleId: string },
-    { label: string; meta: string }
-  >({
-    createGhost: ({ ruleId }) => {
-      const activeRule = editorState.rules.find(rule => rule.id === ruleId) ?? null
-      if (!activeRule) {
-        return null
-      }
+  const { dragGhost, dragGhostElement, startPointerDrag, handlePointerMove, handlePointerUp } =
+    usePointerDragSession<{ ruleId: string }, { label: string; meta: string }>({
+      createGhost: ({ ruleId }) => {
+        const activeRule = editorState.rules.find((rule) => rule.id === ruleId) ?? null
+        if (!activeRule) {
+          return null
+        }
 
-      return {
-        label: activeRule.name || '未命名规则',
-        meta: activeRule.type,
-      }
-    },
-    onActivate: ({ item }) => {
-      draggingRuleId.value = item.ruleId
-      previewOrder.value = getCommittedOrder()
-    },
-    onFrame: state => {
-      updatePreviewOrder(state.currentX, state.currentY)
-    },
-    onCommit: () => {
-      if (previewOrder.value) {
-        commitPreviewOrder(previewOrder.value)
-      }
-    },
-    onClear: () => {
-      previewOrder.value = null
-      draggingRuleId.value = null
-      dragOverRuleId.value = null
-      dropPlacement.value = 'after'
-    },
-  })
+        return {
+          label: activeRule.name || '未命名规则',
+          meta: activeRule.type,
+        }
+      },
+      onActivate: ({ item }) => {
+        draggingRuleId.value = item.ruleId
+        previewOrder.value = getCommittedOrder()
+      },
+      onFrame: (state) => {
+        updatePreviewOrder(state.currentX, state.currentY)
+      },
+      onCommit: () => {
+        if (previewOrder.value) {
+          commitPreviewOrder(previewOrder.value)
+        }
+      },
+      onClear: () => {
+        previewOrder.value = null
+        draggingRuleId.value = null
+        dragOverRuleId.value = null
+        dropPlacement.value = 'after'
+      },
+    })
 
   async function fetchPresets() {
     isLoading.value = true
@@ -214,7 +208,7 @@ export function useVcptavernEditor() {
 
       editorState.name = name
       editorState.description = data.description || ''
-      editorState.rules = (data.rules || []).map(rule => normalizeRule(rule))
+      editorState.rules = (data.rules || []).map((rule) => normalizeRule(rule))
       isEditorVisible.value = true
       isNewPreset.value = false
       showMessage(`已加载预设：${name}`, 'success')
@@ -247,7 +241,7 @@ export function useVcptavernEditor() {
       return
     }
 
-    const sourceIndex = editorState.rules.findIndex(rule => rule.id === targetRule.id)
+    const sourceIndex = editorState.rules.findIndex((rule) => rule.id === targetRule.id)
     if (sourceIndex >= 0) {
       editorState.rules.splice(sourceIndex, 1)
     }
@@ -320,7 +314,7 @@ export function useVcptavernEditor() {
     try {
       const payload: TavernPreset = {
         description: editorState.description.trim(),
-        rules: editorState.rules.map(rule => {
+        rules: editorState.rules.map((rule) => {
           const normalized = normalizeRule(rule)
           if (normalized.type !== 'depth') {
             delete normalized.depth
@@ -368,6 +362,8 @@ export function useVcptavernEditor() {
     dragState,
     dragGhost,
     dragGhostElement,
+    handlePointerMove,
+    handlePointerUp,
     orderedRules,
     editorState,
     fetchPresets,

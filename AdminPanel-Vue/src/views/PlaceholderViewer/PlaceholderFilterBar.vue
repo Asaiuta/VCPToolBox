@@ -52,7 +52,10 @@
 </template>
 
 <script setup lang="ts">
-import type { PlaceholderTypeOption, PlaceholderViewMode } from "./types";
+import type {
+  PlaceholderTypeOption,
+  PlaceholderViewMode,
+} from "@/features/placeholder-viewer/types";
 
 defineProps<{
   viewMode: PlaceholderViewMode;

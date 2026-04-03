@@ -1,3 +1,15 @@
+import { HttpError, toHttpError } from '@/platform/http/errors'
+import { httpClient } from '@/platform/http/httpClient'
+
+type ApiUiOptions =
+  | boolean
+  | {
+      showLoader?: boolean
+      loadingKey?: string
+      timeoutMs?: number
+      suppressErrorMessage?: boolean
+    }
+
 export interface NewApiMonitorQuery {
   startTimestamp?: number
   endTimestamp?: number
@@ -56,6 +68,14 @@ interface MonitorError extends Error {
   status?: number
 }
 
+const DEFAULT_MONITOR_TIMEOUT_MS = 10000
+
+const DEFAULT_MONITOR_UI_OPTIONS = {
+  showLoader: false,
+  timeoutMs: DEFAULT_MONITOR_TIMEOUT_MS,
+  suppressErrorMessage: true,
+}
+
 function buildQueryString(query: NewApiMonitorQuery = {}): string {
   const params = new URLSearchParams()
 
@@ -81,47 +101,69 @@ function createMonitorError(message: string, status?: number): MonitorError {
   return error
 }
 
-async function requestMonitorData<T>(path: string): Promise<T> {
-  const response = await fetch(path, {
-    method: 'GET',
-    credentials: 'same-origin',
-    headers: {
-      Accept: 'application/json',
-    },
-  })
+function resolveTimeout(uiOptions: ApiUiOptions): number {
+  if (
+    typeof uiOptions === 'object' &&
+    uiOptions !== null &&
+    typeof uiOptions.timeoutMs === 'number' &&
+    uiOptions.timeoutMs > 0
+  ) {
+    return uiOptions.timeoutMs
+  }
 
+  return DEFAULT_MONITOR_TIMEOUT_MS
+}
+
+async function requestMonitorData<T>(
+  path: string,
+  uiOptions: ApiUiOptions = DEFAULT_MONITOR_UI_OPTIONS
+): Promise<T> {
   let payload: NewApiMonitorEnvelope<T> | null = null
 
   try {
-    payload = (await response.json()) as NewApiMonitorEnvelope<T>
-  } catch {
-    payload = null
+    payload = await httpClient.request<NewApiMonitorEnvelope<T>>({
+      url: path,
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+      timeoutMs: resolveTimeout(uiOptions),
+    })
+  } catch (error) {
+    const normalizedError = toHttpError(error)
+
+    throw createMonitorError(normalizedError.message, normalizedError.status)
   }
 
-  if (!response.ok || payload?.success === false) {
-    throw createMonitorError(
-      payload?.error || payload?.message || `NewAPI monitor request failed: ${response.status}`,
-      response.status
-    )
+  if (payload?.success === false) {
+    throw new HttpError(payload.error || payload.message || 'NewAPI monitor request failed')
   }
 
   if (!payload?.data) {
-    throw createMonitorError('NewAPI monitor response is missing data', response.status)
+    throw createMonitorError('NewAPI monitor response is missing data')
   }
 
   return payload.data
 }
 
 export const newApiMonitorApi = {
-  async getSummary(query: NewApiMonitorQuery = {}): Promise<NewApiMonitorSummary> {
+  async getSummary(
+    query: NewApiMonitorQuery = {},
+    uiOptions: ApiUiOptions = DEFAULT_MONITOR_UI_OPTIONS
+  ): Promise<NewApiMonitorSummary> {
     return requestMonitorData<NewApiMonitorSummary>(
-      `/admin_api/newapi-monitor/summary${buildQueryString(query)}`
+      `/admin_api/newapi-monitor/summary${buildQueryString(query)}`,
+      uiOptions
     )
   },
 
-  async getTrend(query: NewApiMonitorQuery = {}): Promise<NewApiMonitorTrendPayload> {
+  async getTrend(
+    query: NewApiMonitorQuery = {},
+    uiOptions: ApiUiOptions = DEFAULT_MONITOR_UI_OPTIONS
+  ): Promise<NewApiMonitorTrendPayload> {
     const data = await requestMonitorData<NewApiMonitorTrendPayload>(
-      `/admin_api/newapi-monitor/trend${buildQueryString(query)}`
+      `/admin_api/newapi-monitor/trend${buildQueryString(query)}`,
+      uiOptions
     )
 
     return {
@@ -131,10 +173,12 @@ export const newApiMonitorApi = {
   },
 
   async getModels(
-    query: Omit<NewApiMonitorQuery, 'modelName'> = {}
+    query: Omit<NewApiMonitorQuery, 'modelName'> = {},
+    uiOptions: ApiUiOptions = DEFAULT_MONITOR_UI_OPTIONS
   ): Promise<NewApiMonitorModelsPayload> {
     const data = await requestMonitorData<NewApiMonitorModelsPayload>(
-      `/admin_api/newapi-monitor/models${buildQueryString(query)}`
+      `/admin_api/newapi-monitor/models${buildQueryString(query)}`,
+      uiOptions
     )
 
     return {
@@ -144,19 +188,20 @@ export const newApiMonitorApi = {
   },
 
   async getDashboardSnapshot(
-    query: NewApiMonitorQuery = {}
+    query: NewApiMonitorQuery = {},
+    uiOptions: ApiUiOptions = DEFAULT_MONITOR_UI_OPTIONS
   ): Promise<{
     summary: NewApiMonitorSummary
     trend: NewApiMonitorTrendItem[]
     models: NewApiMonitorModelItem[]
   }> {
     const [summaryResult, trendResult, modelsResult] = await Promise.allSettled([
-      this.getSummary(query),
-      this.getTrend(query),
+      this.getSummary(query, uiOptions),
+      this.getTrend(query, uiOptions),
       this.getModels({
         startTimestamp: query.startTimestamp,
         endTimestamp: query.endTimestamp,
-      }),
+      }, uiOptions),
     ])
 
     if (summaryResult.status !== 'fulfilled') {

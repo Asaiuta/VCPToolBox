@@ -57,7 +57,7 @@
         <div v-if="results.length > 0" class="discovery-results-list">
           <div
             v-for="(result, index) in results"
-            :key="index"
+            :key="result.path || `${result.name}-${index}`"
             class="discovery-result-card"
             @click="openResult(result)"
           >
@@ -76,7 +76,7 @@
             <div class="result-tags">
               <span
                 v-for="(tag, i) in result.matchedTags?.slice(0, 5)"
-                :key="i"
+                :key="`${tag}-${i}`"
                 class="result-tag"
               >
                 #{{ tag }}

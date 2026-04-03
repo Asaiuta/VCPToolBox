@@ -6,7 +6,7 @@
       <span v-if="statusMessage" :class="['status-message', statusType]">{{ statusMessage }}</span>
     </div>
     <div id="semantic-groups-container">
-      <div v-for="(group, index) in semanticGroups" :key="index" class="semantic-group-item card">
+      <div v-for="(group, index) in semanticGroups" :key="group.name || `semantic-${index}`" class="semantic-group-item card">
         <div class="semantic-group-header">
           <input
             type="text"

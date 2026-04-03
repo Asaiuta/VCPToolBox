@@ -42,6 +42,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
+import { stripAppRouterBase } from "@/app/routes/base";
 import { useAppStore, type NavItem } from "@/stores/app";
 import { useLocalStorage } from "@/composables/useLocalStorage";
 import type { RecentVisit } from "@/composables/useRecentVisits";
@@ -212,7 +213,7 @@ function isActiveRoute(target: string | undefined, pluginName?: string): boolean
     );
   }
 
-  const currentPath = route.path.replace("/AdminPanel", "");
+  const currentPath = stripAppRouterBase(route.path);
   if (target === "dashboard") {
     return currentPath === "/" || currentPath === "/dashboard";
   }

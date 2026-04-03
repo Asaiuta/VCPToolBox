@@ -51,7 +51,7 @@
         <div class="agent-map-list">
           <div
             v-for="(entry, index) in agentMap"
-            :key="index"
+            :key="entry.name || entry.file || `agent-map-${index}`"
             class="agent-map-entry card"
           >
             <div class="agent-entry-row">
@@ -156,7 +156,7 @@
 
 <script setup lang="ts">
 import DualPaneEditor from "@/components/DualPaneEditor.vue";
-import { useAgentFilesEditor } from "./AgentFilesEditor/useAgentFilesEditor";
+import { useAgentFilesEditor } from "@/features/agent-files-editor/useAgentFilesEditor";
 
 const {
   agentMap,

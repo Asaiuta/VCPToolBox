@@ -1,9 +1,22 @@
 import type { AuthCheckResponse, LoginRequest, LoginResponse } from '@/types/api'
+import { httpClient } from '@/platform/http/httpClient'
+import { HttpError, toHttpError } from '@/platform/http/errors'
 import { createLogger } from '@/utils/logger'
 
 export type AuthUserInfo = NonNullable<AuthCheckResponse['user']>
 
 const logger = createLogger('AuthApi')
+
+interface StatusError extends Error {
+  status?: number
+}
+
+interface AuthRequestResult<T> {
+  ok: boolean
+  status?: number
+  data?: T
+  message?: string
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -32,114 +45,177 @@ function extractAuthUser(payload: unknown): AuthUserInfo | null {
   }
 }
 
-async function requestAuth(url: string, init: RequestInit = {}): Promise<Response> {
-  return fetch(url, {
-    ...init,
-    credentials: init.credentials ?? 'same-origin',
-  })
-}
-
-async function parseJsonBody<T>(response: Response): Promise<T | null> {
-  const contentType = response.headers.get('content-type') || ''
-  if (!contentType.includes('application/json')) {
-    return null
+function toStatusError(error: unknown): StatusError {
+  if (error instanceof HttpError) {
+    return error
   }
 
+  if (error instanceof Error) {
+    return error as StatusError
+  }
+
+  return toHttpError(error)
+}
+
+function createBasicAuth(credentials: LoginRequest): string {
+  return `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`
+}
+
+async function requestAuth<T>(
+  request: {
+    url: string
+    method: 'GET' | 'POST'
+    headers?: Record<string, string>
+  }
+): Promise<AuthRequestResult<T>> {
   try {
-    return (await response.json()) as T
-  } catch {
-    return null
+    const data = await httpClient.request<T>(request)
+    return {
+      ok: true,
+      data,
+    }
+  } catch (error) {
+    const statusError = toStatusError(error)
+    return {
+      ok: false,
+      status: statusError.status,
+      message: statusError.message,
+    }
   }
 }
 
-async function requestVerifyLogin(credentials?: LoginRequest): Promise<Response> {
-  const headers: HeadersInit = {
+async function requestVerifyLogin(
+  credentials?: LoginRequest
+): Promise<AuthRequestResult<unknown>> {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   }
 
   if (credentials) {
-    headers.Authorization = `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`
+    headers.Authorization = createBasicAuth(credentials)
   }
 
-  return requestAuth('/admin_api/verify-login', {
+  return requestAuth({
+    url: '/admin_api/verify-login',
     method: 'POST',
     headers,
   })
 }
 
+async function requestCheckAuth(): Promise<AuthRequestResult<AuthCheckResponse>> {
+  return requestAuth<AuthCheckResponse>({
+    url: '/admin_api/check-auth',
+    method: 'GET',
+  })
+}
+
+function isAuthenticatedResponse(payload: AuthCheckResponse | undefined): boolean {
+  if (!payload) {
+    return false
+  }
+
+  if (typeof payload.authenticated === 'boolean') {
+    return payload.authenticated
+  }
+
+  return true
+}
+
+function normalizeLoginError(result: AuthRequestResult<unknown>): LoginResponse {
+  if (result.status === 429) {
+    return {
+      success: false,
+      message: result.message || '登录尝试过于频繁，请稍后再试',
+    }
+  }
+
+  if (result.status === 401 || result.status === 403) {
+    return {
+      success: false,
+      message: '用户名或密码错误',
+    }
+  }
+
+  if (result.status && result.status >= 500) {
+    return {
+      success: false,
+      message: '服务器暂时不可用，请稍后再试',
+    }
+  }
+
+  if (result.message) {
+    return {
+      success: false,
+      message: '连接服务器失败，请检查网络',
+    }
+  }
+
+  return {
+    success: false,
+    message: '登录失败，请稍后重试',
+  }
+}
+
 export const authApi = {
   async verifyLogin(): Promise<boolean> {
-    try {
-      const response = await requestVerifyLogin()
-      return response.ok
-    } catch (error) {
-      logger.error('verify-login check failed:', error)
-      return false
+    const result = await requestVerifyLogin()
+    if (!result.ok) {
+      logger.warn('verify-login check failed:', {
+        status: result.status,
+        message: result.message,
+      })
     }
+
+    return result.ok
   },
 
   async checkAuthStatus(): Promise<boolean> {
-    try {
-      const response = await requestAuth('/admin_api/check-auth', {
-        method: 'GET',
-      })
+    const result = await requestCheckAuth()
 
-      if (response.status === 404) {
-        logger.warn('check-auth not found, falling back to verify-login')
-        return await authApi.verifyLogin()
-      }
-
-      return response.ok
-    } catch (error) {
-      logger.warn('check-auth failed, falling back to verify-login:', error)
-      return await authApi.verifyLogin()
+    if (result.ok) {
+      return isAuthenticatedResponse(result.data)
     }
+
+    if (result.status === 404) {
+      logger.warn('check-auth not found, falling back to verify-login')
+      return authApi.verifyLogin()
+    }
+
+    logger.warn('check-auth failed, falling back to verify-login:', {
+      status: result.status,
+      message: result.message,
+    })
+    return authApi.verifyLogin()
   },
 
   async getCurrentUserInfo(): Promise<AuthUserInfo | null> {
-    try {
-      const response = await requestAuth('/admin_api/check-auth', {
-        method: 'GET',
-      })
+    const result = await requestCheckAuth()
 
-      if (!response.ok) {
-        return null
+    if (!result.ok) {
+      if (result.status !== 404) {
+        logger.warn('fetch user info failed at /admin_api/check-auth:', {
+          status: result.status,
+          message: result.message,
+        })
       }
-
-      const data = await parseJsonBody<AuthCheckResponse>(response)
-      return extractAuthUser(data)
-    } catch (error) {
-      logger.warn('fetch user info failed at /admin_api/check-auth:', error)
       return null
     }
+
+    return extractAuthUser(result.data)
   },
 
   async login(credentials: LoginRequest): Promise<LoginResponse> {
-    try {
-      const response = await requestVerifyLogin(credentials)
+    const result = await requestVerifyLogin(credentials)
 
-      if (response.ok) {
-        return { success: true }
-      }
-
-      if (response.status === 429) {
-        const data = await parseJsonBody<{ message?: string }>(response)
-        return {
-          success: false,
-          message: data?.message || '登录尝试过于频繁，请稍后再试',
-        }
-      }
-
-      return {
-        success: false,
-        message: '用户名或密码错误',
-      }
-    } catch (error) {
-      logger.error('login request failed:', error)
-      return {
-        success: false,
-        message: '连接服务器失败，请检查网络',
-      }
+    if (result.ok) {
+      return { success: true }
     }
+
+    logger.warn('login request failed:', {
+      status: result.status,
+      message: result.message,
+    })
+
+    return normalizeLoginError(result)
   },
 }

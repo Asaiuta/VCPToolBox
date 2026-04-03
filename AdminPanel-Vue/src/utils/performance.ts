@@ -61,10 +61,20 @@ class PerformanceMonitor {
    */
   private initPageMetrics() {
     window.addEventListener("load", () => {
-      const timing = performance.timing;
-      this.metrics.pageLoadTime = timing.loadEventEnd - timing.navigationStart;
-      this.metrics.domContentLoaded =
-        timing.domContentLoadedEventEnd - timing.navigationStart;
+      const navigationEntry = performance
+        .getEntriesByType("navigation")
+        .find((entry): entry is PerformanceNavigationTiming => entry instanceof PerformanceNavigationTiming);
+
+      if (navigationEntry) {
+        this.metrics.pageLoadTime = Math.max(
+          0,
+          navigationEntry.loadEventEnd - navigationEntry.startTime
+        );
+        this.metrics.domContentLoaded = Math.max(
+          0,
+          navigationEntry.domContentLoadedEventEnd - navigationEntry.startTime
+        );
+      }
 
       // 获取 Paint 指标
       const paintEntries = performance.getEntriesByType("paint");

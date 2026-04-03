@@ -3,206 +3,52 @@ import {
   createWebHistory,
   type RouteRecordRaw,
 } from "vue-router";
+import { APP_ROUTE_COMPONENTS } from "@/app/routes/components";
+import {
+  APP_DEFAULT_ROUTE_ID,
+  APP_ROUTE_MANIFEST,
+  getAppRoutePath,
+} from "@/app/routes/manifest";
+import { APP_ROUTER_BASE, resolveCanonicalAppLocation } from "@/app/routes/base";
+import { resolveSafeAppRedirect } from "@/app/routes/redirect";
 import { useAuthStore } from "@/stores/auth";
-import { ROUTES } from "@/constants/routes";
 import { createLogger } from "@/utils/logger";
-const VcptavernEditor = () => import("../views/VcptavernEditor.vue");
 const logger = createLogger("Router");
+
+if (typeof window !== "undefined") {
+  const canonicalLocation = resolveCanonicalAppLocation(window.location);
+  if (canonicalLocation) {
+    window.history.replaceState(window.history.state, "", canonicalLocation);
+  }
+}
+
+const shellRoutes: RouteRecordRaw[] = APP_ROUTE_MANIFEST.filter(
+  (route) => route.id !== "login"
+).map((route) => ({
+  path: route.path.replace(/^\//, ""),
+  name: route.routeName,
+  component: APP_ROUTE_COMPONENTS[route.id],
+  meta: { requiresAuth: route.requiresAuth },
+}));
 
 const routes: RouteRecordRaw[] = [
   {
-    path: ROUTES.LOGIN,
+    path: getAppRoutePath("login"),
     name: "Login",
-    component: () => import(/* webpackChunkName: "auth" */ "@/views/Login.vue"),
+    component: APP_ROUTE_COMPONENTS.login,
+    meta: { requiresAuth: false },
   },
   {
     path: "/",
     name: "Main",
-    component: () =>
-      import(/* webpackChunkName: "layout" */ "@/layouts/MainLayout.vue"),
-    redirect: ROUTES.DASHBOARD,
-    children: [
-      // 核心页面（优先加载）
-      {
-        path: "dashboard",
-        name: "Dashboard",
-        component: () =>
-          import(/* webpackChunkName: "dashboard" */ "@/views/Dashboard.vue"),
-      },
-      {
-        path: "base-config",
-        name: "BaseConfig",
-        component: () =>
-          import(/* webpackChunkName: "config" */ "@/views/BaseConfig.vue"),
-      },
-      {
-        path: "plugins",
-        name: "PluginsHub",
-        component: () =>
-          import(/* webpackChunkName: "plugin" */ "@/views/PluginsHub.vue"),
-      },
-
-      // 日记和论坛（大文件，独立 chunk）
-      {
-        path: "daily-notes-manager",
-        name: "DailyNotesManager",
-        component: () =>
-          import(
-            /* webpackChunkName: "daily-notes" */ "@/views/DailyNotesManager.vue"
-          ),
-      },
-      {
-        path: "vcp-forum",
-        name: "VcpForum",
-        component: () =>
-          import(/* webpackChunkName: "forum" */ "@/views/VcpForum.vue"),
-      },
-
-      // 编辑器页面（共享 chunk）
-      {
-        path: "image-cache-editor",
-        name: "ImageCacheEditor",
-        component: () =>
-          import(
-            /* webpackChunkName: "editors" */ "@/views/ImageCacheEditor.vue"
-          ),
-      },
-      {
-        path: "semantic-groups-editor",
-        name: "SemanticGroupsEditor",
-        component: () =>
-          import(
-            /* webpackChunkName: "editors" */ "@/views/SemanticGroupsEditor.vue"
-          ),
-      },
-      {
-        path: "vcptavern-editor",
-        name: "VcptavernEditor",
-        component: VcptavernEditor,
-        meta: { requiresAuth: true },
-      },
-
-      // Agent 相关（共享 chunk）
-      {
-        path: "agent-files-editor",
-        name: "AgentFilesEditor",
-        component: () =>
-          import(
-            /* webpackChunkName: "agent" */ "@/views/AgentFilesEditor.vue"
-          ),
-      },
-      {
-        path: "agent-assistant-config",
-        name: "AgentAssistantConfig",
-        component: () =>
-          import(
-            /* webpackChunkName: "agent" */ "@/views/AgentAssistantConfig.vue"
-          ),
-      },
-      {
-        path: "agent-scores",
-        name: "AgentScores",
-        component: () =>
-          import(/* webpackChunkName: "agent" */ "@/views/AgentScores.vue"),
-      },
-
-      // 工具和配置（共享 chunk）
-      {
-        path: "toolbox-manager",
-        name: "ToolboxManager",
-        component: () =>
-          import(/* webpackChunkName: "tools" */ "@/views/ToolboxManager.vue"),
-      },
-      {
-        path: "tvs-files-editor",
-        name: "TvsFilesEditor",
-        component: () =>
-          import(/* webpackChunkName: "tools" */ "@/views/TvsFilesEditor.vue"),
-      },
-      {
-        path: "tool-list-editor",
-        name: "ToolListEditor",
-        component: () =>
-          import(
-            /* webpackChunkName: "editors" */ "@/views/ToolListEditor.vue"
-          ),
-      },
-      {
-        path: "preprocessor-order-manager",
-        name: "PreprocessorOrderManager",
-        component: () =>
-          import(
-            /* webpackChunkName: "tools" */ "@/views/PreprocessorOrderManager.vue"
-          ),
-      },
-      {
-        path: "tool-approval-manager",
-        name: "ToolApprovalManager",
-        component: () =>
-          import(
-            /* webpackChunkName: "tools" */ "@/views/ToolApprovalManager.vue"
-          ),
-      },
-
-      // RAG 和思维链（共享 chunk）
-      {
-        path: "thinking-chains-editor",
-        name: "ThinkingChainsEditor",
-        component: () =>
-          import(
-            /* webpackChunkName: "rag" */ "@/views/ThinkingChainsEditor.vue"
-          ),
-      },
-      {
-        path: "rag-tuning",
-        name: "RagTuning",
-        component: () =>
-          import(/* webpackChunkName: "rag" */ "@/views/RagTuning.vue"),
-      },
-
-      // 其他页面（共享 chunk）
-      {
-        path: "schedule-manager",
-        name: "ScheduleManager",
-        component: () =>
-          import(
-            /* webpackChunkName: "others" */ "@/views/ScheduleManager.vue"
-          ),
-      },
-      {
-        path: "dream-manager",
-        name: "DreamManager",
-        component: () =>
-          import(/* webpackChunkName: "others" */ "@/views/DreamManager.vue"),
-      },
-      {
-        path: "server-log-viewer",
-        name: "ServerLogViewer",
-        component: () =>
-          import(
-            /* webpackChunkName: "others" */ "@/views/ServerLogViewer.vue"
-          ),
-      },
-      {
-        path: "placeholder-viewer",
-        name: "PlaceholderViewer",
-        component: () =>
-          import(
-            /* webpackChunkName: "others" */ "@/views/PlaceholderViewer.vue"
-          ),
-      },
-      {
-        path: ROUTES.PLUGIN_CONFIG.replace(/^\//, ""),
-        name: "PluginConfig",
-        component: () =>
-          import(/* webpackChunkName: "plugin" */ "@/views/PluginConfig.vue"),
-      },
-    ],
+    component: () => import("@/layouts/MainLayout.vue"),
+    redirect: getAppRoutePath(APP_DEFAULT_ROUTE_ID),
+    children: shellRoutes,
   },
 ];
 
 const router = createRouter({
-  history: createWebHistory(ROUTES.BASE),
+  history: createWebHistory(APP_ROUTER_BASE),
   routes,
 });
 
@@ -213,23 +59,8 @@ function isPublicRoute(to: {
   return to.meta.requiresAuth === false || to.name === "Login";
 }
 
-function normalizeRedirectPath(target?: string | null): string {
-  if (!target || !target.startsWith("/")) {
-    return ROUTES.DASHBOARD;
-  }
-
-  const resolved = router.resolve(target);
-  if (!resolved.matched.length || resolved.name === "Login") {
-    return ROUTES.DASHBOARD;
-  }
-
-  return resolved.fullPath.startsWith("/")
-    ? resolved.fullPath
-    : ROUTES.DASHBOARD;
-}
-
 function getSafeRedirectTarget(to: { fullPath: string }): string {
-  return normalizeRedirectPath(to.fullPath);
+  return resolveSafeAppRedirect(router, to.fullPath, "dashboard");
 }
 
 router.beforeEach(async (to, _from, next) => {
@@ -242,7 +73,8 @@ router.beforeEach(async (to, _from, next) => {
         const isAuthenticated =
           authStore.isAuthenticated || (await authStore.checkAuth());
         if (isAuthenticated) {
-          const redirect = normalizeRedirectPath(
+          const redirect = resolveSafeAppRedirect(
+            router,
             typeof to.query.redirect === "string" ? to.query.redirect : null
           );
           next(redirect);

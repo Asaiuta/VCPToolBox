@@ -5,6 +5,7 @@
 
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
+import { buildSidebarNavItems } from "@/app/routes/manifest";
 import { useLocalStorage } from "@/composables/useLocalStorage";
 import type { PluginInfo } from "@/types/api.plugin";
 
@@ -41,98 +42,11 @@ export const useAppStore = defineStore("app", () => {
     []
   );
 
-  const navItems = ref<NavItem[]>([
-    { target: "dashboard", label: "仪表盘", icon: "dashboard" },
-    { category: "———— 核 心 功 能 ————" },
-    { target: "base-config", label: "全局基础配置", icon: "settings" },
-    {
-      target: "daily-notes-manager",
-      label: "日记知识库管理",
-      icon: "description",
-    },
-    { target: "vcp-forum", label: "VCP 论坛", icon: "forum" },
-    {
-      target: "image-cache-editor",
-      label: "多媒体 Base64 编辑器",
-      icon: "photo_library",
-    },
-    {
-      target: "semantic-groups-editor",
-      label: "语义组编辑器",
-      icon: "hub",
-    },
-    {
-      target: "vcptavern-editor",
-      label: "VCPTavern 预设编辑",
-      icon: "casino",
-    },
-    {
-      target: "agent-files-editor",
-      label: "Agent 管理器",
-      icon: "smart_toy",
-    },
-    {
-      target: "toolbox-manager",
-      label: "Toolbox 管理器",
-      icon: "inventory_2",
-    },
-    {
-      target: "agent-assistant-config",
-      label: "Agent 助手配置",
-      icon: "diversity_3",
-    },
-    {
-      target: "agent-scores",
-      label: "Agent 积分排行榜",
-      icon: "leaderboard",
-    },
-    {
-      target: "tvs-files-editor",
-      label: "高级变量编辑器",
-      icon: "data_object",
-    },
-    {
-      target: "tool-list-editor",
-      label: "工具列表配置编辑器",
-      icon: "construction",
-    },
-    {
-      target: "preprocessor-order-manager",
-      label: "预处理器顺序管理",
-      icon: "sort",
-    },
-    {
-      target: "tool-approval-manager",
-      label: "插件调用审核管理",
-      icon: "verified_user",
-    },
-    {
-      target: "thinking-chains-editor",
-      label: "思维链编辑器",
-      icon: "psychology",
-    },
-    {
-      target: "schedule-manager",
-      label: "日程管理",
-      icon: "calendar_month",
-    },
-    { target: "dream-manager", label: "梦境审批", icon: "nights_stay" },
-    { target: "rag-tuning", label: "浪潮 RAG 调参", icon: "tune" },
-    { target: "server-log-viewer", label: "服务器日志", icon: "terminal" },
-    {
-      target: "placeholder-viewer",
-      label: "占位符查看器",
-      icon: "view_list",
-    },
-    { category: "———— 插 件 中 心 ————" },
-    { target: "plugins", label: "插件中心", icon: "extension" },
-  ]);
+  const navItems = ref<NavItem[]>(buildSidebarNavItems());
 
   const plugins = ref<PluginInfo[]>([]);
   const pluginsLoaded = ref(false);
 
-  const currentTheme = computed(() => theme.value);
-  const isAnimationsEnabled = computed(() => animationsEnabled.value);
   const pluginMap = computed(
     () => new Map(plugins.value.map((plugin) => [getPluginName(plugin), plugin]))
   );
@@ -222,8 +136,6 @@ export const useAppStore = defineStore("app", () => {
     pluginsLoaded,
     pinnedPluginNames,
     pinnedPlugins,
-    currentTheme,
-    isAnimationsEnabled,
     setTheme,
     toggleAnimations,
     loadPlugins,

@@ -97,7 +97,7 @@
       <div id="aa-agent-cards-container" class="aa-agent-cards-container">
         <div
           v-for="(agent, index) in agents"
-          :key="index"
+          :key="agent.baseName || agent.name || `agent-${index}`"
           class="aa-agent-card card"
         >
           <div class="aa-agent-card-header">
@@ -206,7 +206,7 @@
 </template>
 
 <script setup lang="ts">
-import { useAgentAssistantConfig } from "./AgentAssistantConfig/useAgentAssistantConfig";
+import { useAgentAssistantConfig } from "@/features/agent-assistant-config/useAgentAssistantConfig";
 
 const {
   globalConfig,

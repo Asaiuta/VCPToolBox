@@ -12,7 +12,7 @@ const LINE_HEIGHT = 22
 const OVERSCAN = 20
 const LOG_RETRY_OPTIONS = {
   maxRetries: 2,
-  retryDelay: 500
+  retryDelay: 500,
 } as const
 
 function normalizeLogContent(content: string): string {
@@ -31,6 +31,17 @@ export function useServerLogViewer() {
   const logOffset = ref(0)
   const isIncrementalReady = ref(false)
   const pendingLineFragment = ref('')
+  const highlightCache = new Map<string, string>()
+
+  const highlightRegex = computed<RegExp | null>(() => {
+    const keyword = filterText.value.trim()
+    if (!keyword) {
+      return null
+    }
+
+    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return new RegExp(`(${escaped})`, 'gi')
+  })
 
   const logContainerRef = ref<HTMLElement | null>(null)
   let containerHeight = 600
@@ -38,13 +49,10 @@ export function useServerLogViewer() {
   const filteredLines = computed(() => {
     const keyword = filterText.value.trim()
     const source = keyword
-      ? logLines.value.filter(line => line.includes(keyword))
+      ? logLines.value.filter((line) => line.includes(keyword))
       : logLines.value
 
-    const limited =
-      source.length > logLimit.value
-        ? source.slice(-logLimit.value)
-        : source
+    const limited = source.length > logLimit.value ? source.slice(-logLimit.value) : source
 
     if (isReverse.value) {
       return [...limited].reverse()
@@ -57,17 +65,12 @@ export function useServerLogViewer() {
     filteredLines.value.map((content, index) => ({ index, content }))
   )
 
-  const {
-    visibleItems: visibleLines,
-    totalHeight,
-    offsetY,
-    onScroll,
-    setScrollTop
-  } = useVirtualScroll(displayedLines, {
-    itemHeight: LINE_HEIGHT,
-    containerHeight,
-    overscan: OVERSCAN
-  })
+  const { visibleItems: visibleLines, totalHeight, offsetY, onScroll, setScrollTop } =
+    useVirtualScroll(displayedLines, {
+      itemHeight: LINE_HEIGHT,
+      containerHeight,
+      overscan: OVERSCAN,
+    })
 
   const totalLines = computed(() => logLines.value.length)
 
@@ -111,7 +114,7 @@ export function useServerLogViewer() {
   }
 
   function copyLog() {
-    const text = displayedLines.value.map(line => line.content).join('\n')
+    const text = displayedLines.value.map((line) => line.content).join('\n')
     navigator.clipboard.writeText(text)
     showMessage('日志已复制到剪贴板', 'success')
   }
@@ -143,18 +146,30 @@ export function useServerLogViewer() {
   }
 
   function highlightText(text: string): string {
-    if (!filterText.value) return text
+    const regex = highlightRegex.value
+    if (!regex) {
+      return text
+    }
 
-    const escaped = filterText.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const regex = new RegExp(`(${escaped})`, 'gi')
+    const cacheKey = `${filterText.value}\u0000${text}`
+    const cached = highlightCache.get(cacheKey)
+    if (cached !== undefined) {
+      return cached
+    }
+
     const highlighted = text.replace(regex, '<mark>$1</mark>')
-    return DOMPurify.sanitize(highlighted)
+    const sanitized = DOMPurify.sanitize(highlighted)
+
+    if (highlightCache.size > 2000) {
+      highlightCache.clear()
+    }
+    highlightCache.set(cacheKey, sanitized)
+
+    return sanitized
   }
 
   function trimLogLines(lines: string[]): string[] {
-    return lines.length > logLimit.value
-      ? lines.slice(-logLimit.value)
-      : lines
+    return lines.length > logLimit.value ? lines.slice(-logLimit.value) : lines
   }
 
   function splitLogChunk(content: string, carry = ''): {
@@ -172,14 +187,12 @@ export function useServerLogViewer() {
     }
 
     const trailingFragment = endsWithNewline ? '' : (segments.pop() ?? '')
-    const displayedLines = trailingFragment
-      ? [...segments, trailingFragment]
-      : segments
+    const displayedLines = trailingFragment ? [...segments, trailingFragment] : segments
 
     return {
       completeLines: segments,
       displayedLines,
-      trailingFragment
+      trailingFragment,
     }
   }
 
@@ -205,9 +218,7 @@ export function useServerLogViewer() {
     }
 
     const existingLines =
-      pendingLineFragment.value && logLines.value.length > 0
-        ? logLines.value.slice(0, -1)
-        : logLines.value
+      pendingLineFragment.value && logLines.value.length > 0 ? logLines.value.slice(0, -1) : logLines.value
     const { displayedLines, trailingFragment } = splitLogChunk(
       incrementalContent,
       pendingLineFragment.value
@@ -225,12 +236,7 @@ export function useServerLogViewer() {
   }
 
   async function loadIncrementalLog(): Promise<boolean> {
-    const data = await systemApi.getIncrementalServerLog(
-      logOffset.value,
-      {},
-      false,
-      LOG_RETRY_OPTIONS
-    )
+    const data = await systemApi.getIncrementalServerLog(logOffset.value, {}, false, LOG_RETRY_OPTIONS)
 
     if (data.needFullReload) {
       return loadFullLog()
@@ -242,9 +248,7 @@ export function useServerLogViewer() {
   async function loadLog() {
     isLoading.value = true
     try {
-      const hasNewContent = isIncrementalReady.value
-        ? await loadIncrementalLog()
-        : await loadFullLog()
+      const hasNewContent = isIncrementalReady.value ? await loadIncrementalLog() : await loadFullLog()
 
       if (autoScroll.value && hasNewContent) {
         await nextTick()
@@ -262,19 +266,31 @@ export function useServerLogViewer() {
     }
   }
 
-  watch(() => logLines.value.length, () => {
-    if (logContainerRef.value) {
-      const rect = logContainerRef.value.getBoundingClientRect()
-      containerHeight = rect.height || 600
+  watch(
+    () => logLines.value.length,
+    () => {
+      highlightCache.clear()
+      if (logContainerRef.value) {
+        const rect = logContainerRef.value.getBoundingClientRect()
+        containerHeight = rect.height || 600
+      }
+    },
+    { flush: 'post' }
+  )
+
+  watch(
+    () => filterText.value,
+    () => {
+      highlightCache.clear()
     }
-  }, { flush: 'post' })
+  )
 
   const logPolling = usePolling(loadLog, {
     interval: 3000,
     immediate: true,
     onError: (error) => {
       logger.warn('polling failed:', error)
-    }
+    },
   })
 
   onMounted(() => {
@@ -306,6 +322,6 @@ export function useServerLogViewer() {
     clearLog,
     getLineClass,
     highlightText,
-    loadLog
+    loadLog,
   }
 }

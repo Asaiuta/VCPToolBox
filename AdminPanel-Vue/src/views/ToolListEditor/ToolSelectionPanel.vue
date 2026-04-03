@@ -75,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Tool } from "./types";
+import type { Tool } from "@/features/tool-list/types";
 
 defineProps<{
   loading: boolean;

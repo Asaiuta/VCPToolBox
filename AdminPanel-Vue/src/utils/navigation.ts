@@ -1,4 +1,5 @@
 import type { RouteLocationNormalizedLoaded } from "vue-router";
+import { getAppRouteMetaByRouteName } from "@/app/routes/manifest";
 import type { PluginInfo } from "@/types/api.plugin";
 import type { NavItem } from "@/stores/app";
 
@@ -36,6 +37,19 @@ export function resolveRouteTitle(
   navItems: readonly NavItem[] = [],
   plugins: readonly PluginInfo[] = []
 ): string {
+  const manifestRoute = getAppRouteMetaByRouteName(route.name);
+  if (manifestRoute?.title) {
+    if (manifestRoute.routeName === "PluginConfig") {
+      return getPluginRouteLabel(
+        String(route.params.pluginName || ""),
+        plugins,
+        navItems
+      );
+    }
+
+    return manifestRoute.title;
+  }
+
   if (route.name === "PluginConfig") {
     return getPluginRouteLabel(
       String(route.params.pluginName || ""),
